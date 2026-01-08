@@ -1,0 +1,276 @@
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;}
+  
+  html {
+    scroll-behavior: smooth
+  }
+
+body {
+  min-height: 100vh;
+  font-family: 'Poppins', sans-serif;
+  background: radial-gradient(circle, #005e61, #0b0614);
+  color: #ffffff;
+}
+
+.navegacao {
+  position: fixed;
+  top: 0;
+  width: 100%;
+  height: 72px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: rgba(11, 6, 20, 0.65);
+  backdrop-filter: blur(12px);
+
+  opacity: 0;
+  transform: translateY(-20px);
+  transition: all 0.6s ease;
+
+  z-index: 1000;
+}
+
+.navegacao.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.navegacao.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.logo {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: #55eaf7;
+}
+
+.menu {
+  list-style: none;
+  display: flex;
+  gap: 36px;
+}
+
+.menu-link {
+  position: relative;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.7);
+  transition: color 0.3s ease;
+}
+
+.menu-link:hover {
+  color: #ffffff;
+}
+
+.menu-link::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -6px;
+  width: 0%;
+  height: 2px;
+  background: #55ccf7;
+  transition: width 0.3s ease;
+}
+
+.menu-link:hover::after {
+  width: 100%;
+}
+
+  .hero {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 160px 80px 0; 
+  gap: 60px;
+}
+
+.hero-texto {
+  max-width: 700px;
+  display: flex;
+  flex-direction: column;
+}
+
+.intro {
+  font-size: 14px;
+  letter-spacing: 2px;
+  color: rgba(255, 255, 255, 0.75);
+  margin-bottom: 14px;
+}
+
+.cabecalho-sub-titulo {
+  font-size: 64px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: #ffffff;
+  margin-bottom: 20px;
+
+  text-shadow:
+    0 0 5px rgba(196, 250, 255, 0.6),
+    0 0 15px rgba(100, 211, 255, 0.5),
+    0 0 30px rgba(60, 232, 255, 0.4);
+}
+
+.sobre-paragrafo {
+  max-width: 600px;
+  font-size: 16px;
+  line-height: 1.8;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.acoes {
+  margin-top: 32px;
+}
+
+.btn {
+  padding: 14px 34px;
+  border-radius: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  background: transparent;
+  color: #ffffff;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn:hover {
+  background: #d3e7ef;
+  color: #0b0614;
+  box-shadow: 0 0 20px rgba(84, 163, 248, 0.6);
+}
+
+.hero-imagem img {
+  width: 360px;
+  border-radius: 22px;
+  transform: rotate(3deg);
+  box-shadow: 0 25px 70px rgba(30, 214, 255, 0.35);
+}
+
+.projetos {
+  padding: 120px 80px;
+}
+
+.projetos-titulo {
+  font-size: 36px;
+  font-weight: 800;
+  margin-bottom: 60px;
+}
+
+.projetos-caixa {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 40px;
+}
+
+.projeto {
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 20px;
+  padding: 24px;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.projeto:hover {
+  transform: translateY(-10px);
+  box-shadow: 0 20px 60px rgba(95, 194, 243, 0.25);
+}
+
+.projeto-imagem {
+  width: 100%;
+  border-radius: 14px;
+  margin-bottom: 16px;
+}
+
+.info-projetos {
+  font-size: 18px;
+  margin-bottom: 8px;
+}
+
+.paragrafo-projetos {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.contatos {
+  padding: 120px 80px;
+}
+
+.contatos-titulo {
+  font-size: 36px;
+  font-weight: 800;
+  margin-bottom: 40px;
+}
+
+.formulario-contato {
+  max-width: 500px;
+}
+
+.grupo-form {
+  margin-bottom: 20px;
+}
+
+.campo-form {
+  width: 100%;
+  padding: 14px 18px;
+  border-radius: 10px;
+  border: none;
+  outline: none;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  font-size: 14px;
+}
+
+.campo-form::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+@media (max-width: 900px) {
+  .navegacao {
+    padding: 20px 24px;
+  }
+
+  .hero {
+    flex-direction: column;
+    text-align: center;
+    padding: 120px 24px 0;
+  }
+
+  .hero-texto {
+    align-items: center;
+  }
+
+  .cabecalho-sub-titulo {
+    font-size: 48px;
+  }
+
+  .hero-imagem img {
+    transform: rotate(0);
+    width: 280px;
+    margin-top: 40px;
+  }
+
+  .projetos-caixa {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  .navegacao {
+    padding: 0 24px;
+  }
+
+  .menu {
+    gap: 20px;
+  }
+}
+
