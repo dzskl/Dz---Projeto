@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StoryMatch AI — App</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07050b;--bg-grad:radial-gradient(circle at 50% 0%,#170d24 0%,#07050b 60%);
+  --rose:#ff2a74;--rose-h:#ff4d8d;--rose-dim:rgba(255,42,116,0.08);--rose-border:rgba(255,42,116,0.25);
+  --purple:#8a2be2;--purple-h:#a04ef6;
+  --accent:linear-gradient(135deg,var(--rose) 0%,var(--purple) 100%);
+  --accent-h:linear-gradient(135deg,var(--rose-h) 0%,var(--purple-h) 100%);
+  --ink:#fff;--ink2:#c9c3d0;--ink3:#6b6375;
+  --glass:rgba(16,12,24,0.65);--glass-border:rgba(255,255,255,0.06);
+  --glass-shadow:0 20px 50px rgba(0,0,0,0.5),inset 0 1px 0 rgba(255,255,255,0.08);
+  --blur:blur(20px);--r-sm:8px;--r-md:14px;--r-lg:20px;--r-xl:28px;
+  --t:all 0.3s cubic-bezier(0.16,1,0.3,1);--font-h:'Outfit',sans-serif;--font-b:'Inter',sans-serif;
+}
+body{background:var(--bg);background-image:var(--bg-grad);color:var(--ink);font-family:var(--font-b);min-height:100vh;-webkit-font-smoothing:antialiased}
+.grad{background:var(--accent);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hide{display:none!important}
+
+/* HEADER */
+header{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid var(--glass-border);background:rgba(7,5,11,0.8);backdrop-filter:var(--blur);position:sticky;top:0;z-index:50}
+.logo{font-family:var(--font-h);font-size:16px;font-weight:900;display:flex;align-items:center;gap:7px}
+.logo svg{width:18px;height:18px;fill:var(--rose);filter:drop-shadow(0 0 6px rgba(255,42,116,0.6))}
+.btn-logout{font-size:12px;color:var(--ink3);background:none;border:1px solid var(--glass-border);padding:8px 14px;border-radius:var(--r-sm);cursor:pointer;transition:var(--t)}
+.btn-logout:hover{border-color:var(--rose-border);color:var(--ink)}
+
+/* LOGIN */
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+.login-card{background:var(--glass);border:1px solid var(--glass-border);border-radius:var(--r-xl);backdrop-filter:var(--blur);box-shadow:var(--glass-shadow);padding:44px 36px;max-width:420px;width:100%;text-align:center}
+.login-card .logo{justify-content:center;font-size:22px;margin-bottom:8px}
+.login-card h1{font-family:var(--font-h);font-size:24px;font-weight:900;letter-spacing:-1px;margin-bottom:8px}
+.login-card p{font-size:13px;color:var(--ink2);line-height:1.7;margin-bottom:28px}
+.field{margin-bottom:16px;text-align:left}
+.field label{display:block;font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--ink3);margin-bottom:8px}
+.input{width:100%;padding:14px 16px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:var(--r-md);color:var(--ink);font-family:var(--font-b);font-size:15px;transition:var(--t)}
+.input:focus{outline:none;border-color:var(--rose-border);box-shadow:0 0 0 3px rgba(255,42,116,0.08)}
+.input::placeholder{color:var(--ink3)}
+select.input{cursor:pointer}
+textarea.input{resize:vertical;min-height:80px;font-size:14px}
+.btn{width:100%;padding:15px;background:var(--accent);color:#fff;border:none;border-radius:var(--r-md);font-family:var(--font-h);font-size:15px;font-weight:800;cursor:pointer;letter-spacing:0.02em;transition:var(--t);display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.btn:hover:not(:disabled){background:var(--accent-h);transform:translateY(-1px);box-shadow:0 6px 22px rgba(255,42,116,0.4)}
+.btn:disabled{opacity:0.55;cursor:not-allowed}
+.msg{font-size:13px;margin-top:14px;min-height:18px}
+.msg.err{color:#ff6b8a}
+.msg.ok{color:#28c840}
+.foot-link{margin-top:20px;font-size:12px;color:var(--ink3)}
+.foot-link a{color:var(--rose);text-decoration:none}
+
+/* APP */
+.app-wrap{max-width:1100px;margin:0 auto;padding:32px 24px 80px;display:grid;grid-template-columns:1fr 1.1fr;gap:24px;align-items:start}
+.panel{background:var(--glass);border:1px solid var(--glass-border);border-radius:var(--r-xl);backdrop-filter:var(--blur);box-shadow:var(--glass-shadow);padding:28px}
+.panel h2{font-family:var(--font-h);font-size:17px;font-weight:800;margin-bottom:4px}
+.panel .hint{font-size:12px;color:var(--ink3);margin-bottom:22px}
+
+/* mode toggle */
+.toggle{display:grid;grid-template-columns:1fr 1fr;gap:8px;background:rgba(0,0,0,0.2);border:1px solid var(--glass-border);border-radius:var(--r-md);padding:5px;margin-bottom:20px}
+.toggle button{padding:11px;background:none;border:none;border-radius:var(--r-sm);color:var(--ink2);font-family:var(--font-h);font-size:13px;font-weight:700;cursor:pointer;transition:var(--t)}
+.toggle button.active{background:var(--accent);color:#fff;box-shadow:0 4px 14px rgba(255,42,116,0.3)}
+
+/* dropzone */
+.drop{border:1.5px dashed var(--rose-border);border-radius:var(--r-lg);padding:30px 20px;text-align:center;cursor:pointer;transition:var(--t);background:var(--rose-dim);margin-bottom:20px}
+.drop:hover{border-color:var(--rose);background:rgba(255,42,116,0.06)}
+.drop.has{padding:12px}
+.drop .ico{font-size:32px;margin-bottom:10px}
+.drop p{font-size:13px;color:var(--ink2)}
+.drop small{font-size:11px;color:var(--ink3)}
+.preview{max-width:100%;max-height:280px;border-radius:var(--r-md);display:block;margin:0 auto}
+
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+/* results */
+.results-empty{text-align:center;padding:60px 20px;color:var(--ink3)}
+.results-empty .ico{font-size:40px;margin-bottom:14px;opacity:0.6}
+.rc{background:rgba(255,42,116,0.07);border:1px solid var(--rose-border);border-radius:var(--r-md);padding:16px 18px;margin-bottom:14px;transition:var(--t)}
+.rc:hover{background:rgba(255,42,116,0.11)}
+.rc-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.rc-tag{font-size:9px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--rose);background:var(--rose-dim);border:1px solid var(--rose-border);padding:4px 10px;border-radius:6px}
+.copy-btn{font-size:11px;color:var(--ink2);background:rgba(255,255,255,0.05);border:1px solid var(--glass-border);padding:5px 12px;border-radius:6px;cursor:pointer;transition:var(--t);font-weight:600}
+.copy-btn:hover{border-color:var(--rose-border);color:#fff}
+.copy-btn.done{color:#28c840;border-color:rgba(40,200,64,0.4)}
+.rc-text{font-size:15px;color:#f0f0f0;line-height:1.6;margin-bottom:10px}
+.rc-tactic{display:flex;gap:7px;font-size:11px;color:var(--ink3);font-style:italic;line-height:1.6;padding-top:10px;border-top:1px solid rgba(255,255,255,0.05)}
+.rc-tactic::before{content:'💡';font-style:normal;flex-shrink:0}
+
+.spinner{width:18px;height:18px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+@media(max-width:820px){.app-wrap{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<!-- ===== LOGIN ===== -->
+<div id="login" class="login-wrap">
+  <div class="login-card">
+    <div class="logo"><svg viewBox="0 0 24 24"><path d="M12 21.593c-5.63-5.539-11-10.297-11-14.402 0-3.791 3.068-5.191 5.281-5.191 1.312 0 4.151.501 5.719 4.457 1.59-3.968 4.464-4.447 5.726-4.447 2.54 0 5.274 1.621 5.274 5.181 0 4.069-5.136 8.625-11 14.402z"/></svg>Story<span class="grad">Match</span></div>
+    <h1>Acesse com seu código</h1>
+    <p>Insira o código que você recebeu após a compra para entrar no app.</p>
+    <form id="login-form">
+      <div class="field">
+        <label for="code">Código de acesso</label>
+        <input class="input" type="text" id="code" placeholder="EX: RIZZ-PRO" autocomplete="off" required>
+      </div>
+      <button class="btn" type="submit" id="login-btn">Entrar</button>
+      <div class="msg" id="login-msg"></div>
+    </form>
+    <div class="foot-link">Ainda não tem código? <a href="/pagvendas.html">Garanta seu acesso</a></div>
+  </div>
+</div>
+
+<!-- ===== APP ===== -->
+<div id="app" class="hide">
+  <header>
+    <div class="logo"><svg viewBox="0 0 24 24"><path d="M12 21.593c-5.63-5.539-11-10.297-11-14.402 0-3.791 3.068-5.191 5.281-5.191 1.312 0 4.151.501 5.719 4.457 1.59-3.968 4.464-4.447 5.726-4.447 2.54 0 5.274 1.621 5.274 5.181 0 4.069-5.136 8.625-11 14.402z"/></svg>Story<span class="grad">Match</span> AI</div>
+    <button class="btn-logout" id="logout">Sair</button>
+  </header>
+
+  <div class="app-wrap">
+    <!-- ENTRADA -->
+    <div class="panel">
+      <h2>Gerar respostas</h2>
+      <p class="hint">Manda o print, escolhe o tom e a IA cria 4 respostas.</p>
+
+      <div class="toggle">
+        <button type="button" class="active" data-mode="story">📸 Story</button>
+        <button type="button" data-mode="chat">💬 Conversa</button>
+      </div>
+
+      <div class="drop" id="drop">
+        <input type="file" id="file" accept="image/*" class="hide">
+        <div id="drop-empty">
+          <div class="ico">🖼️</div>
+          <p>Clique ou arraste o print aqui</p>
+          <small>JPG ou PNG · story ou conversa</small>
+        </div>
+        <img id="preview" class="preview hide" alt="preview">
+      </div>
+
+      <div class="grid2" style="margin-bottom:16px">
+        <div class="field" style="margin:0">
+          <label for="tone">Tom</label>
+          <select class="input" id="tone">
+            <option value="Descontraído e bem-humorado">Descontraído</option>
+            <option value="Charmoso e confiante">Charmoso</option>
+            <option value="Misterioso e instigante">Misterioso</option>
+            <option value="Direto e ousado">Direto</option>
+          </select>
+        </div>
+        <div class="field" style="margin:0">
+          <label for="goal">Objetivo</label>
+          <select class="input" id="goal">
+            <option value="Abrir uma conversa">Abrir conversa</option>
+            <option value="Fazer ela rir">Fazer rir</option>
+            <option value="Marcar um encontro">Marcar encontro</option>
+            <option value="Demonstrar interesse com classe">Demonstrar interesse</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="context">Contexto extra (opcional)</label>
+        <textarea class="input" id="context" placeholder="Algo que só você sabe: o nome dela, onde estuda/trabalha, um assunto que rolou..."></textarea>
+      </div>
+
+      <button class="btn" id="gen-btn">⚡ Gerar 4 respostas</button>
+      <div class="msg err" id="gen-msg"></div>
+    </div>
+
+    <!-- RESULTADO -->
+    <div class="panel">
+      <h2>Suas respostas</h2>
+      <p class="hint">Toque em "Copiar" e mande no chat.</p>
+      <div id="results">
+        <div class="results-empty">
+          <div class="ico">✨</div>
+          <p>As respostas geradas aparecem aqui.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = ''; // mesma origem
+let accessCode = sessionStorage.getItem('rizz_code') || '';
+let isStory = true;
+let imageData = null;   // base64 puro (sem prefixo data:)
+let imageMime = null;
+
+const $ = s => document.querySelector(s);
+
+/* ---- sessão ---- */
+function showApp(){ $('#login').classList.add('hide'); $('#app').classList.remove('hide'); }
+function showLogin(){ $('#app').classList.add('hide'); $('#login').classList.remove('hide'); }
+if(accessCode) showApp();
+
+/* ---- login ---- */
+$('#login-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const code = $('#code').value.trim();
+  const msg = $('#login-msg'); const btn = $('#login-btn');
+  if(!code) return;
+  msg.className='msg'; msg.textContent='Verificando...'; btn.disabled=true;
+  try{
+    const r = await fetch(API+'/api/validate-code',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code})});
+    const data = await r.json();
+    if(r.ok && data.success){
+      accessCode = code; sessionStorage.setItem('rizz_code', code);
+      msg.className='msg ok'; msg.textContent='Acesso liberado!';
+      showApp();
+    }else{
+      msg.className='msg err'; msg.textContent = data.error || 'Código inválido.';
+    }
+  }catch(err){ msg.className='msg err'; msg.textContent='Erro de conexão. Tente novamente.'; }
+  finally{ btn.disabled=false; }
+});
+
+$('#logout').addEventListener('click', ()=>{ sessionStorage.removeItem('rizz_code'); accessCode=''; showLogin(); });
+
+/* ---- toggle modo ---- */
+document.querySelectorAll('.toggle button').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    document.querySelectorAll('.toggle button').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active'); isStory = b.dataset.mode==='story';
+  });
+});
+
+/* ---- upload ---- */
+const drop=$('#drop'), file=$('#file'), preview=$('#preview'), dropEmpty=$('#drop-empty');
+drop.addEventListener('click', ()=>file.click());
+drop.addEventListener('dragover', e=>{e.preventDefault();drop.style.borderColor='var(--rose)';});
+drop.addEventListener('dragleave', ()=>{drop.style.borderColor='';});
+drop.addEventListener('drop', e=>{e.preventDefault();drop.style.borderColor='';if(e.dataTransfer.files[0])handleFile(e.dataTransfer.files[0]);});
+file.addEventListener('change', ()=>{ if(file.files[0]) handleFile(file.files[0]); });
+
+function handleFile(f){
+  if(!f.type.startsWith('image/')){ $('#gen-msg').textContent='Envie um arquivo de imagem.'; return; }
+  const reader=new FileReader();
+  reader.onload=()=>{
+    const result=reader.result;
+    imageMime=f.type;
+    imageData=result.split(',')[1]; // remove "data:...;base64,"
+    preview.src=result; preview.classList.remove('hide');
+    dropEmpty.classList.add('hide'); drop.classList.add('has');
+    $('#gen-msg').textContent='';
+  };
+  reader.readAsDataURL(f);
+}
+
+/* ---- gerar ---- */
+$('#gen-btn').addEventListener('click', async ()=>{
+  const msg=$('#gen-msg'); const btn=$('#gen-btn'); const results=$('#results');
+  msg.textContent='';
+  if(!imageData){ msg.textContent='Envie um print primeiro.'; return; }
+  btn.disabled=true; btn.innerHTML='<span class="spinner"></span> Gerando...';
+  results.innerHTML='<div class="results-empty"><div class="ico"><span class="spinner" style="margin:0 auto"></span></div><p>A IA está analisando o print...</p></div>';
+  try{
+    const r = await fetch(API+'/api/generate',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        code:accessCode, image:imageData, mimeType:imageMime,
+        tone:$('#tone').value, goal:$('#goal').value,
+        context:$('#context').value.trim(), isStory
+      })
+    });
+    const data = await r.json();
+    if(!r.ok){
+      if(r.status===401){ msg.textContent='Seu código expirou. Faça login novamente.'; sessionStorage.removeItem('rizz_code'); setTimeout(showLogin,1500); }
+      results.innerHTML='<div class="results-empty"><div class="ico">⚠️</div><p>'+(data.error||'Erro ao gerar.')+'</p></div>';
+      return;
+    }
+    renderReplies(data.replies||[]);
+  }catch(err){
+    results.innerHTML='<div class="results-empty"><div class="ico">⚠️</div><p>Erro de conexão.</p></div>';
+  }finally{
+    btn.disabled=false; btn.innerHTML='⚡ Gerar 4 respostas';
+  }
+});
+
+function renderReplies(replies){
+  const results=$('#results');
+  if(!replies.length){ results.innerHTML='<div class="results-empty"><div class="ico">🤔</div><p>Nenhuma resposta gerada. Tente outro print.</p></div>'; return; }
+  results.innerHTML = replies.map((rep,i)=>`
+    <div class="rc">
+      <div class="rc-top">
+        <span class="rc-tag">${escapeHtml(rep.tag||'Resposta')}</span>
+        <button class="copy-btn" data-i="${i}">Copiar</button>
+      </div>
+      <div class="rc-text">${escapeHtml(rep.text||'')}</div>
+      ${rep.tactic?`<div class="rc-tactic">${escapeHtml(rep.tactic)}</div>`:''}
+    </div>`).join('');
+  results.querySelectorAll('.copy-btn').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      navigator.clipboard.writeText(replies[b.dataset.i].text||'');
+      b.textContent='Copiado ✓'; b.classList.add('done');
+      setTimeout(()=>{b.textContent='Copiar';b.classList.remove('done');},1600);
+    });
+  });
+}
+
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+</script>
+</body>
+</html>

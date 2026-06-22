@@ -1,0 +1,19 @@
+# Dependências
+node_modules/
+
+# Variáveis de ambiente (NUNCA commitar chaves de API / senhas)
+.env
+.env.local
+.env.*.local
+
+# Banco de dados local (contém códigos de acesso reais)
+database.json
+*/database.json
+
+# Logs
+*.log
+npm-debug.log*
+
+# Sistema
+.DS_Store
+Thumbs.db
