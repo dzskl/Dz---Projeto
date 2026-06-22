@@ -6,9 +6,13 @@ node_modules/
 .env.local
 .env.*.local
 
-# Banco de dados local (contém códigos de acesso reais)
+# Banco de dados local (contém códigos e contas reais)
 database.json
 */database.json
+data.sqlite
+data.sqlite-wal
+data.sqlite-shm
+*.sqlite
 
 # Logs
 *.log

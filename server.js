@@ -1,25 +1,33 @@
 const express = require('express');
 const cors = require('cors');
-const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 require('dotenv').config();
+
+const dbx = require('./db');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const DB_FILE = path.join(__dirname, 'database.json');
 
-// Atrás de um proxy reverso (nginx) na VPS, para que req.ip seja o IP real do cliente.
+// Segredo do JWT. Se não definido, gera um efêmero (sessões caem ao reiniciar).
+const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(32).toString('hex');
+if (!process.env.JWT_SECRET) {
+  console.warn('⚠️  JWT_SECRET não definido no .env — usando um segredo temporário (logins caem ao reiniciar).');
+}
+
+// Atrás de proxy reverso (nginx) na VPS, para req.ip correto.
 app.set('trust proxy', 1);
 
-// CORS: restringe às origens definidas em ALLOWED_ORIGIN (separadas por vírgula).
-// Se não definido, libera tudo (apenas para desenvolvimento).
+// CORS restrito por ALLOWED_ORIGIN (separado por vírgula). Sem ele = liberado (dev).
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN;
 app.use(cors(ALLOWED_ORIGIN ? { origin: ALLOWED_ORIGIN.split(',').map(s => s.trim()) } : {}));
 
 app.use(express.json({ limit: '15mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Rate limiter simples em memória (sem dependências externas).
+// ---- Rate limiter em memória (sem dependências) ----
 function rateLimiter({ windowMs, max, message }) {
   const hits = new Map();
   return (req, res, next) => {
@@ -34,81 +42,112 @@ function rateLimiter({ windowMs, max, message }) {
     next();
   };
 }
+const generateLimiter = rateLimiter({ windowMs: 60 * 1000, max: 30, message: 'Limite de gerações por minuto atingido. Aguarde.' });
+const authLimiter = rateLimiter({ windowMs: 60 * 1000, max: 12, message: 'Muitas tentativas. Aguarde um minuto.' });
 
-const generateLimiter = rateLimiter({ windowMs: 60 * 1000, max: 30, message: 'Limite de gerações por minuto atingido. Aguarde um pouco.' });
-const authLimiter = rateLimiter({ windowMs: 60 * 1000, max: 10, message: 'Muitas tentativas. Aguarde um minuto.' });
+// ---- Helpers de auth ----
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-// Helper: ler banco
-function readDb() {
+function signToken(user) {
+  return jwt.sign({ uid: user.id, pid: user.product_id }, JWT_SECRET, { expiresIn: '30d' });
+}
+
+function authRequired(req, res, next) {
+  const header = req.headers['authorization'] || '';
+  const token = header.startsWith('Bearer ') ? header.slice(7) : null;
+  if (!token) return res.status(401).json({ error: 'Não autenticado.' });
   try {
-    const data = fs.readFileSync(DB_FILE, 'utf8');
-    return JSON.parse(data);
-  } catch (err) {
-    return { accessCodes: [], usageCount: {}, logs: [] };
+    const payload = jwt.verify(token, JWT_SECRET);
+    const user = dbx.getUserById(payload.uid);
+    if (!user) return res.status(401).json({ error: 'Conta não encontrada.' });
+    if (user.expires_at && new Date() > new Date(user.expires_at)) {
+      return res.status(403).json({ error: 'Seu acesso expirou. Renove para continuar.' });
+    }
+    req.user = user;
+    next();
+  } catch {
+    return res.status(401).json({ error: 'Sessão inválida ou expirada.' });
   }
 }
 
-// Helper: salvar banco
-function writeDb(db) {
-  fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2), 'utf8');
+function publicUser(u) {
+  return {
+    email: u.email, plan: u.plan,
+    usageLimit: u.usage_limit, usageCount: u.usage_count,
+    expiresAt: u.expires_at,
+  };
 }
 
-// ROTA: Validar código de acesso do cliente
-app.post('/api/validate-code', authLimiter, (req, res) => {
-  const { code } = req.body;
-  if (!code) return res.status(400).json({ error: 'Código não fornecido.' });
-  
-  const db = readDb();
-  if (db.accessCodes.includes(code)) {
-    return res.json({ success: true });
-  } else {
-    return res.status(401).json({ success: false, error: 'Código de acesso inválido.' });
+// ======================= AUTENTICAÇÃO =======================
+
+// Cadastro: resgata um código e cria a conta (conta por produto).
+app.post('/api/register', authLimiter, async (req, res) => {
+  const { code, email, password } = req.body || {};
+  if (!code || !email || !password) return res.status(400).json({ error: 'Preencha código, email e senha.' });
+  if (!EMAIL_RE.test(email)) return res.status(400).json({ error: 'Email inválido.' });
+  if (String(password).length < 6) return res.status(400).json({ error: 'A senha precisa ter ao menos 6 caracteres.' });
+
+  const c = dbx.getCode(code.trim());
+  if (!c) return res.status(404).json({ error: 'Código inválido.' });
+  if (c.status === 'redeemed') return res.status(409).json({ error: 'Este código já foi usado.' });
+
+  const emailNorm = String(email).trim().toLowerCase();
+  if (dbx.getUser(emailNorm, c.product_id)) {
+    return res.status(409).json({ error: 'Já existe uma conta com este email para este produto. Faça login.' });
   }
+
+  const expiresAt = c.duration_days
+    ? new Date(Date.now() + c.duration_days * 86400000).toISOString()
+    : null;
+
+  const passwordHash = await bcrypt.hash(password, 10);
+  const user = dbx.createUser({
+    email: emailNorm, passwordHash, productId: c.product_id,
+    plan: c.plan, usageLimit: c.usage_limit, expiresAt, code: c.code,
+  });
+  dbx.markCodeRedeemed(c.code);
+
+  return res.json({ token: signToken(user), user: publicUser(user) });
 });
 
-// ROTA: Gerar respostas com IA Real (escondendo a chave de API)
-app.post('/api/generate', generateLimiter, async (req, res) => {
-  const { code, image, mimeType, tone, goal, context, isStory } = req.body;
+// Login com email + senha (no contexto de um produto).
+app.post('/api/login', authLimiter, async (req, res) => {
+  const { email, password, productSlug = 'rizzai' } = req.body || {};
+  if (!email || !password) return res.status(400).json({ error: 'Preencha email e senha.' });
+  const product = dbx.getProductBySlug(productSlug);
+  if (!product) return res.status(400).json({ error: 'Produto inválido.' });
 
-  // 0. Validação básica de entrada
-  if (!image || !mimeType) {
-    return res.status(400).json({ error: 'Imagem não fornecida.' });
+  const user = dbx.getUser(String(email).trim().toLowerCase(), product.id);
+  if (!user) return res.status(401).json({ error: 'Email ou senha incorretos.' });
+  const ok = await bcrypt.compare(password, user.password_hash);
+  if (!ok) return res.status(401).json({ error: 'Email ou senha incorretos.' });
+
+  return res.json({ token: signToken(user), user: publicUser(user) });
+});
+
+// Dados da conta logada.
+app.get('/api/me', authRequired, (req, res) => res.json({ user: publicUser(req.user) }));
+
+// ======================= GERAÇÃO COM IA =======================
+app.post('/api/generate', generateLimiter, authRequired, async (req, res) => {
+  const { image, mimeType, tone, goal, context, isStory } = req.body || {};
+  if (!image || !mimeType) return res.status(400).json({ error: 'Imagem não fornecida.' });
+
+  const user = req.user;
+  // Checa limite de uso do plano.
+  if (user.usage_limit !== null && user.usage_count >= user.usage_limit) {
+    return res.status(403).json({ error: 'Você atingiu o limite de gerações do seu plano.' });
   }
 
-  // 1. Validar código
-  const db = readDb();
-  if (!db.accessCodes.includes(code)) {
-    return res.status(401).json({ error: 'Código de acesso inválido ou expirado.' });
-  }
-
-  // 2. Incrementar contador de uso e registrar logs
-  db.usageCount = db.usageCount || {};
-  db.usageCount[code] = (db.usageCount[code] || 0) + 1;
-  
-  db.logs = db.logs || [];
-  db.logs.push({
-    timestamp: new Date().toLocaleString('pt-BR'),
-    code,
-    type: isStory ? 'Story' : 'Chat',
-    tone,
-    goal
-  });
-  writeDb(db);
-
-  // 3. Obter chave de API
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    return res.status(500).json({ error: 'Erro: Chave de API do Gemini não configurada no servidor (.env).' });
-  }
+  if (!apiKey) return res.status(500).json({ error: 'Servidor sem chave de IA configurada.' });
 
-  // 4. Montar chamada para o Gemini API
   const model = 'gemini-2.5-flash';
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
-  // Se o usuário digitou contexto extra, integra-o na instrução da IA
-  const contextPrompt = context 
-    ? `\nINFORMAÇÃO ESPECÍFICA ADICIONAL SOBRE A GAROTA OU A SITUAÇÃO: "${context}". 
-Você deve OBRIGATORIAMENTE fundir e cruzar esta informação com a análise do print. As respostas devem fazer sentido combinando os dois dados. Por exemplo, se no contexto diz "ela estuda direito" e na imagem ela está na praia, brinque ou comente cruzando a praia e o estudo de direito de forma natural.` 
+  const contextPrompt = context
+    ? `\nINFORMAÇÃO ESPECÍFICA ADICIONAL SOBRE A GAROTA OU A SITUAÇÃO: "${context}".
+Você deve OBRIGATORIAMENTE fundir e cruzar esta informação com a análise do print. As respostas devem fazer sentido combinando os dois dados. Por exemplo, se no contexto diz "ela estuda direito" e na imagem ela está na praia, brinque ou comente cruzando a praia e o estudo de direito de forma natural.`
     : '';
 
   const promptStory = `Você é um amigo ultra carismático especialista em "rizz" (sedução leve, humor inteligente e conversação moderna).
@@ -171,88 +210,112 @@ Forneça o retorno estritamente no seguinte formato JSON (sem blocos de código 
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contents: [{
-          parts: [
-            { text: finalPrompt },
-            { inlineData: { mimeType: mimeType, data: image } }
-          ]
-        }],
-        generationConfig: {
-          responseMimeType: "application/json"
-        }
-      })
+        contents: [{ parts: [{ text: finalPrompt }, { inlineData: { mimeType, data: image } }] }],
+        generationConfig: { responseMimeType: 'application/json' },
+      }),
     });
 
     if (!response.ok) {
       const errText = await response.text();
       console.error('Erro da API Gemini:', response.status, errText);
-      return res.status(502).json({ error: 'Não foi possível gerar as respostas agora. Tente novamente em instantes.' });
+      return res.status(502).json({ error: 'Não foi possível gerar as respostas agora. Tente novamente.' });
     }
 
     const json = await response.json();
     const rawText = json.candidates[0].content.parts[0].text;
     const parsed = JSON.parse(rawText.trim());
-    return res.json(parsed);
 
+    // Sucesso: contabiliza uso e registra log.
+    dbx.incrementUsage(user.id);
+    dbx.addLog({ userId: user.id, productId: user.product_id, type: isStory ? 'Story' : 'Chat', tone, goal });
+
+    return res.json(parsed);
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ error: `Falha na requisição: ${err.message}` });
+    return res.status(500).json({ error: 'Falha ao gerar respostas. Tente novamente.' });
   }
 });
 
-// ── ROTAS DE ADMINISTRAÇÃO ──
+// ======================= ADMIN =======================
 function adminAuth(req, res, next) {
   const expectedPassword = process.env.ADMIN_PASSWORD;
-  // Fail-closed: sem senha configurada, o painel admin fica bloqueado.
   if (!expectedPassword) {
-    return res.status(503).json({ error: 'Painel admin desativado: defina ADMIN_PASSWORD no arquivo .env.' });
+    return res.status(503).json({ error: 'Painel admin desativado: defina ADMIN_PASSWORD no .env.' });
   }
-  const adminPassword = req.headers['x-admin-password'];
-  if (adminPassword === expectedPassword) {
-    next();
-  } else {
-    res.status(403).json({ error: 'Acesso negado. Senha incorreta.' });
-  }
+  if (req.headers['x-admin-password'] === expectedPassword) return next();
+  return res.status(403).json({ error: 'Acesso negado. Senha incorreta.' });
 }
 
-// Listar códigos e logs
-app.get('/api/admin/codes', authLimiter, adminAuth, (req, res) => {
-  const db = readDb();
+// Visão geral: códigos, usuários, logs e planos disponíveis.
+app.get('/api/admin/data', authLimiter, adminAuth, (req, res) => {
   res.json({
-    accessCodes: db.accessCodes || [],
-    usageCount: db.usageCount || {},
-    logs: db.logs || []
+    plans: Object.keys(dbx.PLANS),
+    codes: dbx.listCodes(),
+    users: dbx.listUsers(),
+    logs: dbx.listLogs(100),
   });
 });
 
-// Criar código
+// Gerar código para um produto + plano.
 app.post('/api/admin/codes', authLimiter, adminAuth, (req, res) => {
-  const { code } = req.body;
-  if (!code) return res.status(400).json({ error: 'Código inválido.' });
-  
-  const db = readDb();
-  db.accessCodes = db.accessCodes || [];
-  if (!db.accessCodes.includes(code)) {
-    db.accessCodes.push(code);
-    writeDb(db);
+  const { productSlug = 'rizzai', plan = 'pro', code } = req.body || {};
+  const product = dbx.getProductBySlug(productSlug);
+  if (!product) return res.status(400).json({ error: 'Produto inválido.' });
+  if (!dbx.PLANS[plan]) return res.status(400).json({ error: 'Plano inválido.' });
+  try {
+    const created = dbx.createCode({ productId: product.id, plan, code });
+    res.json({ success: true, code: created });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
   }
-  res.json({ success: true, accessCodes: db.accessCodes });
 });
 
-// Remover código
 app.delete('/api/admin/codes', authLimiter, adminAuth, (req, res) => {
-  const { code } = req.body;
+  const { code } = req.body || {};
   if (!code) return res.status(400).json({ error: 'Código inválido.' });
+  dbx.deleteCode(code);
+  res.json({ success: true });
+});
 
-  const db = readDb();
-  db.accessCodes = (db.accessCodes || []).filter(c => c !== code);
-  writeDb(db);
-  res.json({ success: true, accessCodes: db.accessCodes });
+// ======================= WEBHOOK CAKTO (esqueleto) =======================
+// Mapa de oferta da Cakto -> { productSlug, plan }. Configure via env CAKTO_OFFER_MAP (JSON).
+// Ex: CAKTO_OFFER_MAP={"oferta_id_starter":{"productSlug":"rizzai","plan":"starter"}}
+let CAKTO_OFFER_MAP = {};
+try { CAKTO_OFFER_MAP = JSON.parse(process.env.CAKTO_OFFER_MAP || '{}'); } catch { /* ignora */ }
+
+app.post('/api/webhook/cakto', (req, res) => {
+  // 1. Autenticação do webhook por segredo (?secret= ou header).
+  const secret = process.env.CAKTO_WEBHOOK_SECRET;
+  const provided = req.query.secret || req.headers['x-cakto-secret'];
+  if (!secret || provided !== secret) return res.status(401).json({ error: 'unauthorized' });
+
+  const body = req.body || {};
+  // 2. Só gera código para pagamento aprovado. (Ajustar nomes conforme payload real da Cakto.)
+  const status = body.status || body.event || body.payment_status;
+  const approved = ['approved', 'paid', 'purchase_approved', 'completed'].includes(String(status).toLowerCase());
+  if (!approved) return res.status(200).json({ ignored: true, reason: 'status não aprovado' });
+
+  // 3. Descobre produto/plano pela oferta. Fallback configurável.
+  const offerId = body.offer_id || body.product_id || (body.offer && body.offer.id) || '';
+  const mapped = CAKTO_OFFER_MAP[offerId] || { productSlug: 'rizzai', plan: 'pro' };
+  const product = dbx.getProductBySlug(mapped.productSlug);
+  if (!product || !dbx.PLANS[mapped.plan]) {
+    console.warn('Cakto webhook: mapeamento de oferta inválido para', offerId);
+    return res.status(200).json({ ignored: true, reason: 'oferta não mapeada' });
+  }
+
+  // 4. Gera o código.
+  const created = dbx.createCode({ productId: product.id, plan: mapped.plan, source: 'cakto' });
+  console.log('💳 Cakto: código gerado', created.code, 'para', mapped);
+
+  // 5. TODO: entregar o código ao comprador (email/WhatsApp) usando body.customer.email etc.
+  //    Por enquanto, retornamos o código na resposta para depuração.
+  return res.status(200).json({ success: true, code: created.code });
 });
 
 app.listen(PORT, () => {
   console.log(`\n=============================================`);
   console.log(`🚀 Servidor RizzAI rodando na porta ${PORT}`);
-  console.log(`👉 Link do App: http://localhost:${PORT}`);
+  console.log(`👉 App: http://localhost:${PORT}/app.html`);
   console.log(`=============================================\n`);
 });
