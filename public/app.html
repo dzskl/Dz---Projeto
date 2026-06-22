@@ -182,6 +182,13 @@ function updateBadge(u){
   $('#usebadge').textContent = `${u.email} · plano ${u.plan} · ${lim==='∞'?'ilimitado':lim+' gerações restantes'}`;
 }
 
+/* se veio da página de obrigado com ?code=, pré-preenche o cadastro */
+const urlCode = new URLSearchParams(location.search).get('code');
+if(urlCode){
+  $('#reg-code').value = urlCode;
+  $('#tab-register').click();
+}
+
 /* valida sessão ao abrir */
 async function boot(){
   if(!token){ showAuth(); return; }

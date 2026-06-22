@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS codes (
   duration_days INTEGER,          -- validade da conta a partir do cadastro; NULL = vitalício
   status      TEXT NOT NULL DEFAULT 'unused',  -- unused | redeemed
   source      TEXT NOT NULL DEFAULT 'manual',  -- manual | cakto
+  external_ref TEXT,                           -- id da transação na Cakto (p/ a página de obrigado)
   created_at  TEXT NOT NULL,
   FOREIGN KEY (product_id) REFERENCES products(id)
 );
@@ -52,6 +53,12 @@ CREATE TABLE IF NOT EXISTS logs (
 );
 `);
 
+// Migração leve: garante a coluna external_ref em bancos já existentes.
+const codeCols = db.prepare('PRAGMA table_info(codes)').all().map(c => c.name);
+if (!codeCols.includes('external_ref')) {
+  db.exec('ALTER TABLE codes ADD COLUMN external_ref TEXT');
+}
+
 // Planos padrão (usados pelo admin e pela Cakto para definir limite/validade).
 const PLANS = {
   starter:   { usage_limit: 50,   duration_days: 7 },
@@ -77,16 +84,17 @@ function genCodeString(prefix = 'RIZZ') {
   const part = () => crypto.randomBytes(3).toString('hex').toUpperCase();
   return `${prefix}-${part()}-${part()}`;
 }
-function createCode({ productId, plan, source = 'manual', code }) {
+function createCode({ productId, plan, source = 'manual', code, externalRef = null }) {
   const cfg = PLANS[plan];
   if (!cfg) throw new Error('Plano inválido');
   const value = code || genCodeString();
-  db.prepare(`INSERT INTO codes (code, product_id, plan, usage_limit, duration_days, source, created_at)
-              VALUES (?,?,?,?,?,?,?)`)
-    .run(value, productId, plan, cfg.usage_limit, cfg.duration_days, source, nowISO());
+  db.prepare(`INSERT INTO codes (code, product_id, plan, usage_limit, duration_days, source, external_ref, created_at)
+              VALUES (?,?,?,?,?,?,?,?)`)
+    .run(value, productId, plan, cfg.usage_limit, cfg.duration_days, source, externalRef, nowISO());
   return db.prepare('SELECT * FROM codes WHERE code = ?').get(value);
 }
 function getCode(code) { return db.prepare('SELECT * FROM codes WHERE code = ?').get(code); }
+function getCodeByRef(ref) { return db.prepare('SELECT * FROM codes WHERE external_ref = ? ORDER BY id DESC LIMIT 1').get(ref); }
 function markCodeRedeemed(code) { db.prepare("UPDATE codes SET status='redeemed' WHERE code=?").run(code); }
 function listCodes() { return db.prepare('SELECT * FROM codes ORDER BY created_at DESC').all(); }
 function deleteCode(code) { db.prepare('DELETE FROM codes WHERE code=?').run(code); }
@@ -124,7 +132,7 @@ ensureProduct('rizzai', 'StoryMatch AI (RizzAI)');
 module.exports = {
   db, PLANS, nowISO,
   ensureProduct, getProductBySlug,
-  genCodeString, createCode, getCode, markCodeRedeemed, listCodes, deleteCode,
+  genCodeString, createCode, getCode, getCodeByRef, markCodeRedeemed, listCodes, deleteCode,
   getUser, getUserById, createUser, incrementUsage, listUsers,
   addLog, listLogs,
 };

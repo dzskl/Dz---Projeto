@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Compra confirmada — StoryMatch AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#07050b;--rose:#ff2a74;--rose-h:#ff4d8d;--rose-dim:rgba(255,42,116,0.08);--rose-border:rgba(255,42,116,0.25);
+  --purple:#8a2be2;--accent:linear-gradient(135deg,var(--rose),var(--purple));--accent-h:linear-gradient(135deg,var(--rose-h),#a04ef6);
+  --ink:#fff;--ink2:#c9c3d0;--ink3:#6b6375;--glass:rgba(16,12,24,0.65);--glass-border:rgba(255,255,255,0.06);
+  --glass-shadow:0 20px 50px rgba(0,0,0,0.5),inset 0 1px 0 rgba(255,255,255,0.08);
+  --blur:blur(20px);--r-md:14px;--r-lg:20px;--r-xl:28px;--t:all .3s cubic-bezier(.16,1,.3,1);--font-h:'Outfit',sans-serif;--font-b:'Inter',sans-serif;}
+body{background:var(--bg);background-image:radial-gradient(circle at 50% 0%,#170d24,#07050b 60%);color:var(--ink);font-family:var(--font-b);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;-webkit-font-smoothing:antialiased}
+.grad{background:var(--accent);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hide{display:none!important}
+.card{background:var(--glass);border:1px solid var(--glass-border);border-radius:var(--r-xl);backdrop-filter:var(--blur);box-shadow:var(--glass-shadow);padding:44px 36px;max-width:460px;width:100%;text-align:center}
+.logo{font-family:var(--font-h);font-size:20px;font-weight:900;display:flex;align-items:center;justify-content:center;gap:7px;margin-bottom:20px}
+.logo svg{width:18px;height:18px;fill:var(--rose);filter:drop-shadow(0 0 6px rgba(255,42,116,0.6))}
+.check{width:74px;height:74px;border-radius:50%;background:var(--rose-dim);border:2px solid var(--rose-border);display:flex;align-items:center;justify-content:center;font-size:36px;margin:0 auto 20px}
+h1{font-family:var(--font-h);font-size:24px;font-weight:900;letter-spacing:-1px;margin-bottom:10px}
+.desc{font-size:14px;color:var(--ink2);line-height:1.7;margin-bottom:26px}
+.code-label{font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink3);margin-bottom:10px}
+.code-box{display:flex;align-items:center;justify-content:center;gap:12px;background:rgba(255,255,255,0.04);border:1px dashed var(--rose-border);border-radius:var(--r-md);padding:18px;margin-bottom:8px}
+.code-val{font-family:var(--font-h);font-size:22px;font-weight:900;letter-spacing:1px;color:#fff}
+.copy{font-size:12px;color:var(--ink2);background:rgba(255,255,255,0.06);border:1px solid var(--glass-border);padding:7px 12px;border-radius:8px;cursor:pointer;font-weight:600;transition:var(--t)}
+.copy:hover{border-color:var(--rose-border);color:#fff}.copy.done{color:#28c840;border-color:rgba(40,200,64,0.4)}
+.tip{font-size:12px;color:var(--ink3);margin-bottom:24px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:16px;background:var(--accent);color:#fff;border:none;border-radius:var(--r-md);font-family:var(--font-h);font-size:15px;font-weight:800;cursor:pointer;text-decoration:none;transition:var(--t)}
+.btn:hover{background:var(--accent-h);transform:translateY(-1px);box-shadow:0 6px 22px rgba(255,42,116,0.4)}
+.spinner{width:34px;height:34px;border:3px solid rgba(255,255,255,0.2);border-top-color:var(--rose);border-radius:50%;animation:spin .8s linear infinite;margin:10px auto 18px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.muted{font-size:13px;color:var(--ink3);line-height:1.7}
+.support{margin-top:22px;font-size:12px;color:var(--ink3)}
+.support a{color:var(--rose);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo"><svg viewBox="0 0 24 24"><path d="M12 21.593c-5.63-5.539-11-10.297-11-14.402 0-3.791 3.068-5.191 5.281-5.191 1.312 0 4.151.501 5.719 4.457 1.59-3.968 4.464-4.447 5.726-4.447 2.54 0 5.274 1.621 5.274 5.181 0 4.069-5.136 8.625-11 14.402z"/></svg>Story<span class="grad">Match</span> AI</div>
+
+  <!-- AGUARDANDO -->
+  <div id="loading">
+    <div class="spinner"></div>
+    <h1>Confirmando seu pagamento...</h1>
+    <p class="muted">Estamos gerando seu código de acesso. Isso leva alguns segundos — não feche esta página.</p>
+  </div>
+
+  <!-- SUCESSO -->
+  <div id="success" class="hide">
+    <div class="check">🎉</div>
+    <h1>Compra confirmada!</h1>
+    <p class="desc">Seu código de acesso está pronto. Copie e use para criar sua conta.</p>
+    <div class="code-label">Seu código de acesso</div>
+    <div class="code-box"><span class="code-val" id="code">—</span><button class="copy" id="copy">Copiar</button></div>
+    <p class="tip">💡 Guarde este código. Você vai usá-lo uma vez para criar a conta.</p>
+    <a class="btn" id="go" href="/app.html">Criar minha conta agora →</a>
+  </div>
+
+  <!-- FALLBACK -->
+  <div id="fail" class="hide">
+    <div class="check">📩</div>
+    <h1>Pagamento recebido!</h1>
+    <p class="desc">Seu código está sendo processado. Se ele não aparecer aqui em instantes, ele também será enviado pelos canais de confirmação da compra.</p>
+    <a class="btn" href="/app.html">Ir para o app</a>
+    <p class="support">Problemas? Fale com o suporte no WhatsApp.</p>
+  </div>
+</div>
+
+<script>
+// Lê a referência da transação da URL (a Cakto deve redirecionar com este parâmetro).
+const params = new URLSearchParams(location.search);
+const ref = params.get('ref') || params.get('transaction_id') || params.get('order_id') || params.get('id') || '';
+
+const $ = s => document.querySelector(s);
+let tries = 0;
+const MAX_TRIES = 15;   // ~30s
+
+async function poll(){
+  if(!ref){ showFail(); return; }
+  try{
+    const r = await fetch('/api/order-code?ref=' + encodeURIComponent(ref));
+    if(r.ok){ const d = await r.json(); showSuccess(d.code); return; }
+  }catch{}
+  if(++tries >= MAX_TRIES){ showFail(); return; }
+  setTimeout(poll, 2000);
+}
+
+function showSuccess(code){
+  $('#loading').classList.add('hide'); $('#fail').classList.add('hide');
+  $('#success').classList.remove('hide');
+  $('#code').textContent = code;
+  // leva o código pré-preenchido para o cadastro
+  $('#go').href = '/app.html?code=' + encodeURIComponent(code);
+  $('#copy').addEventListener('click', ()=>{
+    navigator.clipboard.writeText(code);
+    $('#copy').textContent='Copiado ✓'; $('#copy').classList.add('done');
+    setTimeout(()=>{$('#copy').textContent='Copiar';$('#copy').classList.remove('done');},1600);
+  });
+}
+function showFail(){ $('#loading').classList.add('hide'); $('#fail').classList.remove('hide'); }
+
+poll();
+</script>
+</body>
+</html>

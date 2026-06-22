@@ -17,6 +17,7 @@ Quem compra recebe um **código**, usa o código para **criar uma conta** (email
     ├── index.html         # Landing de marketing
     ├── pagvendas.html     # Página de vendas (destino dos anúncios / UTMify)
     ├── app.html           # O APP: criar conta / login + gerar respostas
+    ├── obrigado.html      # Página de obrigado (Cakto redireciona p/ cá; mostra o código)
     └── admin.html         # Painel admin: gerar códigos, ver contas e uso
 ```
 
@@ -70,7 +71,8 @@ ele abre o **app**, vai em "Criar conta", informa o código + email + senha, e j
 | `GET /api/admin/data` | senha admin | Códigos, contas, logs, planos |
 | `POST /api/admin/codes` | senha admin | Gera código `{productSlug, plan, code?}` |
 | `DELETE /api/admin/codes` | senha admin | Remove código |
-| `POST /api/webhook/cakto` | segredo | Pagamento aprovado → gera código (esqueleto) |
+| `POST /api/webhook/cakto` | segredo | Pagamento aprovado → gera código (vinculado à transação) |
+| `GET /api/order-code?ref=` | — | Página de obrigado busca o código gerado p/ a transação |
 
 ## 🔒 Segurança aplicada
 
@@ -84,7 +86,9 @@ ele abre o **app**, vai em "Criar conta", informa o código + email + senha, e j
 ## 🗺️ Roadmap
 
 - **Fase 1 ✅** RizzAI no ar — segurança, página de vendas, app e admin.
-- **Fase 2 ✅ (em andamento)** SQLite + **contas por produto** (código cria conta) + esqueleto do **webhook da Cakto**.
-  - Falta: definir o mapeamento real das ofertas da Cakto e a **entrega do código** ao comprador (email/WhatsApp).
+- **Fase 2 ✅** SQLite + **contas por produto** (código cria conta) + **webhook da Cakto** +
+  **página de obrigado** que mostra o código após a compra.
+  - Falta ligar na Cakto real: configurar o **redirect** para `/obrigado.html?ref=<id_da_transação>`,
+    o **CAKTO_WEBHOOK_SECRET** e o **CAKTO_OFFER_MAP** (oferta → plano), conforme o payload real.
 - **Fase 3 ⏳** Estrutura multi-SaaS (clonar novos produtos rápido) + rastreio da **UTMify**.
 ```

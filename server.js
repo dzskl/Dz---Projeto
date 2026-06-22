@@ -295,7 +295,19 @@ app.post('/api/webhook/cakto', (req, res) => {
   const approved = ['approved', 'paid', 'purchase_approved', 'completed'].includes(String(status).toLowerCase());
   if (!approved) return res.status(200).json({ ignored: true, reason: 'status não aprovado' });
 
-  // 3. Descobre produto/plano pela oferta. Fallback configurável.
+  // 3. Identificador da transação (usado pela página de obrigado para buscar o código).
+  const ref = String(
+    body.transaction_id || body.order_id || body.checkout_id || body.id ||
+    (body.transaction && body.transaction.id) || (body.data && body.data.id) || ''
+  );
+
+  // 4. Idempotência: se já geramos código para esta transação, devolve o mesmo.
+  if (ref) {
+    const existing = dbx.getCodeByRef(ref);
+    if (existing) return res.status(200).json({ success: true, code: existing.code });
+  }
+
+  // 5. Descobre produto/plano pela oferta. Fallback configurável.
   const offerId = body.offer_id || body.product_id || (body.offer && body.offer.id) || '';
   const mapped = CAKTO_OFFER_MAP[offerId] || { productSlug: 'rizzai', plan: 'pro' };
   const product = dbx.getProductBySlug(mapped.productSlug);
@@ -304,13 +316,20 @@ app.post('/api/webhook/cakto', (req, res) => {
     return res.status(200).json({ ignored: true, reason: 'oferta não mapeada' });
   }
 
-  // 4. Gera o código.
-  const created = dbx.createCode({ productId: product.id, plan: mapped.plan, source: 'cakto' });
-  console.log('💳 Cakto: código gerado', created.code, 'para', mapped);
+  // 6. Gera o código vinculado à transação.
+  const created = dbx.createCode({ productId: product.id, plan: mapped.plan, source: 'cakto', externalRef: ref || null });
+  console.log('💳 Cakto: código gerado', created.code, 'ref', ref, 'para', mapped);
 
-  // 5. TODO: entregar o código ao comprador (email/WhatsApp) usando body.customer.email etc.
-  //    Por enquanto, retornamos o código na resposta para depuração.
   return res.status(200).json({ success: true, code: created.code });
+});
+
+// Página de obrigado consulta o código gerado para a transação (polling até o webhook chegar).
+app.get('/api/order-code', authLimiter, (req, res) => {
+  const ref = String(req.query.ref || '').trim();
+  if (!ref) return res.status(400).json({ error: 'Referência não informada.' });
+  const c = dbx.getCodeByRef(ref);
+  if (!c) return res.status(404).json({ error: 'Código ainda não disponível.' });
+  return res.json({ code: c.code, plan: c.plan, status: c.status });
 });
 
 app.listen(PORT, () => {
