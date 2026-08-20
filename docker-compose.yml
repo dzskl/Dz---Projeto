@@ -1,0 +1,49 @@
+# Ambiente de desenvolvimento local.
+#
+# Sobe apenas as dependencias de infraestrutura (banco e fila); a API, o worker e
+# o painel rodam na sua maquina com `pnpm dev`, o que mantem o hot reload rapido.
+#
+#   docker compose up -d
+#   pnpm db:deploy && pnpm db:seed
+#   pnpm dev
+
+services:
+  postgres:
+    # PostgreSQL 16: a unicidade do opt-out global usa NULLS NOT DISTINCT,
+    # disponivel a partir da versao 15.
+    image: postgres:16-alpine
+    container_name: tg_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: telegram_platform
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d telegram_platform']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: tg_redis
+    restart: unless-stopped
+    # appendonly garante que a fila sobrevive a um restart do container.
+    command: redis-server --appendonly yes
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  postgres_data:
+  redis_data:

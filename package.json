@@ -1,0 +1,50 @@
+{
+  "name": "telegram-platform",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Plataforma web de gestao e automacao para Telegram",
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@10.33.0",
+  "scripts": {
+    "build": "pnpm -r --filter \"./packages/**\" build && pnpm -r --filter \"./apps/**\" build",
+    "dev": "pnpm -r --parallel dev",
+    "dev:api": "pnpm --filter @tg/api dev",
+    "dev:web": "pnpm --filter @tg/web dev",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write \"**/*.{ts,tsx,js,json,md,yml,yaml}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,json,md,yml,yaml}\"",
+    "db:generate": "pnpm --filter @tg/database generate",
+    "db:migrate": "pnpm --filter @tg/database migrate",
+    "db:deploy": "pnpm --filter @tg/database deploy",
+    "db:seed": "pnpm --filter @tg/database seed",
+    "db:studio": "pnpm --filter @tg/database studio",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "setup": "pnpm install && pnpm db:generate"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "prisma",
+      "esbuild",
+      "@node-rs/argon2"
+    ]
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.18.0",
+    "@types/node": "^22.10.5",
+    "eslint": "^9.18.0",
+    "eslint-config-prettier": "^9.1.0",
+    "prettier": "^3.4.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.20.0",
+    "vitest": "^2.1.8"
+  }
+}

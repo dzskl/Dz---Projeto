@@ -1,23 +1,38 @@
-# Dependências
+# Dependencias
 node_modules/
+.pnpm-store/
 
-# Variáveis de ambiente (NUNCA commitar chaves de API / senhas)
+# Segredos — NUNCA versionar
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
 
-# Banco de dados local (contém códigos e contas reais)
-database.json
-*/database.json
-data.sqlite
-data.sqlite-wal
-data.sqlite-shm
+# Build
+dist/
+build/
+.next/
+out/
+*.tsbuildinfo
+
+# Prisma: o client e gerado, as migrations sao versionadas
+packages/database/generated/
+
+# Testes
+coverage/
+
+# Dados locais
 *.sqlite
+pgdata/
+uploads/
 
 # Logs
 *.log
 npm-debug.log*
+pnpm-debug.log*
 
-# Sistema
+# Editor / SO
 .DS_Store
 Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
