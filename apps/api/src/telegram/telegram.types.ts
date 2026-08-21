@@ -24,6 +24,13 @@ export interface InfoWebhook {
   lastErrorMessage?: string;
 }
 
+/** Botao inline, no formato que o envio precisa. */
+export interface BotaoInline {
+  texto: string;
+  url?: string;
+  callbackData?: string;
+}
+
 export interface TelegramApi {
   /** Valida o token e devolve a identidade do bot. */
   getMe(): Promise<DadosDoBot>;
@@ -33,7 +40,7 @@ export interface TelegramApi {
    * Devolve o id da mensagem. Lanca ErroTelegram com `destinatarioIndisponivel`
    * quando a pessoa bloqueou o bot ou desativou a conta.
    */
-  sendMessage(chatId: number | bigint, texto: string): Promise<number>;
+  sendMessage(chatId: number | bigint, texto: string, botoes?: BotaoInline[]): Promise<number>;
   /** Registra o endereco que recebera os updates. */
   setWebhook(url: string, secretToken: string): Promise<void>;
   /** Remove o webhook (usado ao desativar ou excluir o bot). */

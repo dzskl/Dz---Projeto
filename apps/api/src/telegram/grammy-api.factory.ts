@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Api, GrammyError, HttpError } from 'grammy';
 import type {
+  BotaoInline,
   DadosDoBot,
   InfoWebhook,
   TelegramApi,
@@ -73,9 +74,24 @@ class GrammyTelegramApi implements TelegramApi {
     }
   }
 
-  async sendMessage(chatId: number | bigint, texto: string): Promise<number> {
+  async sendMessage(
+    chatId: number | bigint,
+    texto: string,
+    botoes?: BotaoInline[],
+  ): Promise<number> {
     try {
-      const msg = await this.api.sendMessage(Number(chatId), texto);
+      // Cada botao numa linha propria: em celular, varios botoes lado a lado
+      // ficam com o texto cortado.
+      const reply_markup = botoes?.length
+        ? {
+            inline_keyboard: botoes.map((b) => [
+              b.url
+                ? { text: b.texto, url: b.url }
+                : { text: b.texto, callback_data: b.callbackData ?? '' },
+            ]),
+          }
+        : undefined;
+      const msg = await this.api.sendMessage(Number(chatId), texto, { reply_markup });
       return msg.message_id;
     } catch (err) {
       throw traduzirErro(err);
