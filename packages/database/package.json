@@ -13,11 +13,11 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "generate": "prisma generate",
-    "migrate": "prisma migrate dev",
-    "deploy": "prisma migrate deploy",
+    "generate": "node scripts/prisma.mjs generate",
+    "migrate": "node scripts/prisma.mjs migrate dev",
+    "deploy": "node scripts/prisma.mjs migrate deploy",
     "seed": "tsx src/seed.ts",
-    "studio": "prisma studio",
+    "studio": "node scripts/prisma.mjs studio",
     "test": "vitest run"
   },
   "prisma": {
@@ -28,11 +28,11 @@
     "@prisma/client": "^6.2.1",
     "@tg/config": "workspace:*",
     "@tg/shared": "workspace:*",
+    "dotenv": "^16.4.7",
     "prisma": "^6.2.1",
     "tsx": "^4.19.2"
   },
   "devDependencies": {
-    "dotenv": "^16.4.7",
     "typescript": "^5.7.3",
     "vitest": "^2.1.8"
   }
