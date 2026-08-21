@@ -1,5 +1,4 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Post, Req, Res } from '@nestjs/common';
-import { getEnv } from '@tg/config';
 import type { Admin } from '@tg/database';
 import {
   AdminRole,
@@ -17,7 +16,7 @@ import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { AuthService, type RequestContext } from './auth.service';
-import { SESSION_COOKIE } from './session.service';
+import { SESSION_COOKIE, opcoesDoCookie } from './session.service';
 
 /** Extrai IP e user-agent para a auditoria. */
 function contextOf(req: Request): RequestContext {
@@ -47,17 +46,8 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ): Promise<{ admin: AdminPublic }> {
     const { admin, token, expiresAt } = await this.auth.login(body, contextOf(req));
-    const env = getEnv();
 
-    res.cookie(SESSION_COOKIE, token, {
-      httpOnly: true,
-      // Secure exige HTTPS; em desenvolvimento (http://localhost) isso impediria
-      // o cookie de ser gravado.
-      secure: env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      expires: expiresAt,
-      path: '/',
-    });
+    res.cookie(SESSION_COOKIE, token, { ...opcoesDoCookie(), expires: expiresAt });
 
     return { admin };
   }
@@ -71,7 +61,7 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ): Promise<void> {
     await this.auth.logout(token, admin.id, contextOf(req));
-    res.clearCookie(SESSION_COOKIE, { path: '/' });
+    res.clearCookie(SESSION_COOKIE, opcoesDoCookie());
   }
 
   /** Dados do usuario logado — usado pelo painel para restaurar a sessao. */
@@ -108,6 +98,6 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ): Promise<void> {
     await this.auth.changePassword(admin.id, body, contextOf(req));
-    res.clearCookie(SESSION_COOKIE, { path: '/' });
+    res.clearCookie(SESSION_COOKIE, opcoesDoCookie());
   }
 }

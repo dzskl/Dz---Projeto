@@ -18,7 +18,17 @@ import type {
  * pede ao navegador que o envie.
  */
 
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3333';
+/**
+ * Endereco da API.
+ *
+ * O valor e embutido no bundle durante o build — nao adianta definir a variavel
+ * depois de publicar, e preciso publicar de novo. Em producao nao ha padrao de
+ * proposito: cair em localhost geraria "nao foi possivel falar com o servidor"
+ * em toda tela, escondendo que o que falta e uma variavel de ambiente.
+ */
+const BASE =
+  process.env.NEXT_PUBLIC_API_URL ??
+  (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:3333');
 
 /** Erro vindo da API, ja com o codigo de dominio preservado. */
 export class ApiError extends Error {
@@ -39,6 +49,14 @@ export class ApiError extends Error {
 }
 
 async function requisicao<T>(caminho: string, init?: RequestInit): Promise<T> {
+  if (!BASE) {
+    throw new ApiError(
+      'NETWORK',
+      'NEXT_PUBLIC_API_URL nao foi definida no build do painel. Configure-a no provedor e publique de novo.',
+      0,
+    );
+  }
+
   let resposta: Response;
 
   try {

@@ -18,6 +18,49 @@ import { prisma, type Admin, type Session } from '@tg/database';
 /** Nome do cookie de sessao. */
 export const SESSION_COOKIE = 'tg_session';
 
+/** Atributos do cookie de sessao, sem o prazo de validade. */
+export interface OpcoesDoCookie {
+  httpOnly: boolean;
+  secure: boolean;
+  sameSite: 'lax' | 'none';
+  path: string;
+}
+
+/**
+ * Atributos do cookie de sessao.
+ *
+ * O ponto delicado e o SameSite. Em desenvolvimento, painel e API vivem no mesmo
+ * host (localhost, portas diferentes) e `lax` funciona. Em producao o painel
+ * costuma ficar na Vercel e a API em outro provedor — hosts diferentes, o que
+ * torna a requisicao **cross-site**: com `lax` o navegador simplesmente nao envia
+ * o cookie, e o painel entra num ciclo de login que nunca termina. O sintoma
+ * engana, porque o login em si responde 200; quem falha e a chamada seguinte.
+ *
+ * `none` exige `secure`, entao a API precisa estar em HTTPS nesse cenario.
+ *
+ * Afrouxar o SameSite normalmente abriria espaco para CSRF. Aqui nao abre por
+ * dois motivos: o CORS libera uma unica origem (WEB_ORIGIN, sem curinga) e toda
+ * a API fala apenas JSON — um formulario HTML nao consegue enviar
+ * `application/json`, entao a requisicao cai no preflight e e barrada ali.
+ *
+ * A comparacao usa o hostname, nao a origem inteira: porta diferente continua
+ * sendo o mesmo site para efeito de cookie.
+ */
+export function opcoesDoCookie(): OpcoesDoCookie {
+  const env = getEnv();
+  const mesmoHost = new URL(env.WEB_ORIGIN).hostname === new URL(env.API_PUBLIC_URL).hostname;
+  const producao = env.NODE_ENV === 'production';
+
+  return {
+    httpOnly: true,
+    // Secure exige HTTPS; em desenvolvimento (http://localhost) isso impediria
+    // o cookie de ser gravado.
+    secure: producao || !mesmoHost,
+    sameSite: mesmoHost ? 'lax' : 'none',
+    path: '/',
+  };
+}
+
 export interface SessionWithAdmin extends Session {
   admin: Admin;
 }

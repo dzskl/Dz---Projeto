@@ -25,7 +25,16 @@
 
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "incremental": true
+
+    /**
+     * Build incremental desligado de proposito.
+     *
+     * O .tsbuildinfo guarda o que ja foi emitido, mas nao verifica se o dist
+     * ainda existe. Apagar o dist e recompilar produz "nada a fazer" e um
+     * pacote sem saida — falha que aparece longe da causa, como um
+     * "Module not found" no build do painel. O ganho de tempo nao compensa.
+     */
+    "incremental": false
   },
   "exclude": ["node_modules", "dist", ".next", "coverage"]
 }
