@@ -1,4 +1,11 @@
-import type { AdminPublic, ApiErrorBody, BotPublico, ErrorCode } from '@tg/shared';
+import type {
+  AdminPublic,
+  ApiErrorBody,
+  BotPublico,
+  ErrorCode,
+  OptOutPublico,
+  PaginaDeContatos,
+} from '@tg/shared';
 
 /**
  * Cliente HTTP do painel.
@@ -96,5 +103,27 @@ export const api = {
       requisicao<{ bot: BotPublico }>(`/bots/${id}/reconectar`, { method: 'POST' }),
 
     excluir: (id: string) => requisicao<void>(`/bots/${id}`, { method: 'DELETE' }),
+  },
+
+  contatos: {
+    listar: (filtros: {
+      botId?: string;
+      status?: string;
+      busca?: string;
+      pagina?: number;
+      porPagina?: number;
+    }) => {
+      const query = new URLSearchParams();
+      for (const [chave, valor] of Object.entries(filtros)) {
+        if (valor !== undefined && valor !== '') query.set(chave, String(valor));
+      }
+      const sufixo = query.toString();
+      return requisicao<PaginaDeContatos>(`/contatos${sufixo ? `?${sufixo}` : ''}`);
+    },
+
+    optOuts: () => requisicao<{ optOuts: OptOutPublico[] }>('/contatos/opt-outs'),
+
+    removerOptOut: (id: string) =>
+      requisicao<void>(`/contatos/opt-outs/${id}`, { method: 'DELETE' }),
   },
 };
