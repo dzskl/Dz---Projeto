@@ -1,3 +1,5 @@
+import { existsSync } from 'node:fs';
+import { dirname, join, parse } from 'node:path';
 import { config as loadDotenv } from 'dotenv';
 import { z } from 'zod';
 
@@ -8,7 +10,32 @@ import { z } from 'zod';
  * subir do que subir sem chave de criptografia e descobrir na primeira campanha.
  */
 
-loadDotenv();
+/**
+ * Procura o .env subindo a partir do diretorio atual.
+ *
+ * O dotenv sozinho procura apenas em `process.cwd()`. Isso nao serve num
+ * monorepo: `pnpm dev` executa a API com o diretorio atual em `apps/api`, e o
+ * .env fica na raiz. O resultado era a API recusando subir com "DATABASE_URL:
+ * Required" apesar de o arquivo existir — mensagem que aponta para o lugar
+ * errado e faz procurar erro de digitacao onde nao ha.
+ *
+ * Em producao nao ha .env nenhum e as variaveis vem do ambiente; nesse caso a
+ * busca termina sem encontrar nada e o dotenv nao e chamado.
+ */
+function acharEnv(): string | undefined {
+  const raiz = parse(process.cwd()).root;
+  let atual = process.cwd();
+
+  for (;;) {
+    const candidato = join(atual, '.env');
+    if (existsSync(candidato)) return candidato;
+    if (atual === raiz) return undefined;
+    atual = dirname(atual);
+  }
+}
+
+const arquivoEnv = acharEnv();
+if (arquivoEnv) loadDotenv({ path: arquivoEnv });
 
 const nodeEnv = z.enum(['development', 'test', 'production']);
 
