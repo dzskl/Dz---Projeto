@@ -29,18 +29,24 @@ Telegram, o que combina melhor com um servico sempre no ar.
 
 ## 1. Painel na Vercel
 
-O `vercel.json` na raiz ja define tudo. Confira apenas isto no painel da Vercel,
-em **Settings → General**:
+Em **Settings → General**:
 
 | Campo | Valor |
 |---|---|
-| Root Directory | **vazio** (a raiz do repositorio) |
-| Framework Preset | Next.js |
-| Build/Install/Output | deixe herdar do `vercel.json` |
+| Root Directory | **`apps/web`** |
+| Include files outside the root directory | **Enabled** |
+| Framework Preset | Next.js (detectado sozinho) |
+| Build / Install / Output | deixe herdar do `apps/web/vercel.json` |
 
-> Se o **Root Directory** estiver apontando para uma pasta do projeto antigo,
-> o deploy falha em cerca de 1 segundo, antes mesmo de instalar as dependencias.
-> Limpar esse campo e o primeiro item a verificar.
+O `Root Directory` **precisa** ser `apps/web`, e nao a raiz. A Vercel procura a
+dependencia `next` no `package.json` daquele diretorio para saber que projeto
+esta construindo. Na raiz do monorepo esse `package.json` nao tem `next` — ele
+so orquestra o workspace — e o deploy morre em cerca de um segundo com
+`No Next.js version detected`, antes de instalar qualquer coisa.
+
+O `Include files outside the root directory` precisa continuar ligado: e o que
+permite ao build enxergar o `pnpm-workspace.yaml`, o `pnpm-lock.yaml` e a pasta
+`packages/`, todos acima de `apps/web`.
 
 Em **Settings → Environment Variables**, defina:
 
@@ -51,12 +57,12 @@ Em **Settings → Environment Variables**, defina:
 Essa variavel e embutida no bundle **durante o build**. Alterar depois exige
 publicar de novo — nao basta salvar e recarregar a pagina.
 
-### Por que o build quebrava
+### Por que o build quebrava mesmo com o Root Directory certo
 
 O painel importa `@tg/shared`, cujo `package.json` aponta para `dist/`. Como
 `dist/` nao e versionado, num clone limpo esse diretorio nao existe e o
 `next build` para com `Module not found: Can't resolve '@tg/shared'`. O
-`buildCommand` do `vercel.json` compila o pacote antes do painel.
+`buildCommand` do `apps/web/vercel.json` compila o pacote antes do painel.
 
 ---
 
