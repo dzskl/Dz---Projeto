@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Cores como canais RGB crus para que o Tailwind aplique opacidade
+ * (bg-superficie/50) sobre os mesmos tokens nos dois temas.
+ */
+:root {
+  --fundo: 250 250 250;
+  --superficie: 255 255 255;
+  --borda: 228 228 231;
+  --texto: 24 24 27;
+  --suave: 113 113 122;
+  --marca: 37 99 235;
+}
+
+.dark {
+  --fundo: 9 9 11;
+  --superficie: 24 24 27;
+  --borda: 39 39 42;
+  --texto: 244 244 245;
+  --suave: 161 161 170;
+  --marca: 96 165 250;
+}
+
+body {
+  background-color: rgb(var(--fundo));
+  color: rgb(var(--texto));
+}
+
+/* Foco visivel apenas para navegacao por teclado. */
+:focus-visible {
+  outline: 2px solid rgb(var(--marca));
+  outline-offset: 2px;
+}

@@ -33,7 +33,8 @@
       "@prisma/engines",
       "prisma",
       "esbuild",
-      "@node-rs/argon2"
+      "@node-rs/argon2",
+      "@swc/core"
     ]
   },
   "devDependencies": {

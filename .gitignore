@@ -13,6 +13,8 @@ build/
 .next/
 out/
 *.tsbuildinfo
+# Gerado pelo Next a cada build
+next-env.d.ts
 
 # Prisma: o client e gerado, as migrations sao versionadas
 packages/database/generated/
