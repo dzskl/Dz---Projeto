@@ -9,7 +9,11 @@
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "strictPropertyInitialization": false,
-    "incremental": true
+    // Sem build incremental: o "nest build" apaga o dist (deleteOutDir) enquanto
+    // o .tsbuildinfo continua registrando os arquivos como ja emitidos. O
+    // resultado sao modulos que somem do dist e a aplicacao quebra no boot com
+    // "Cannot find module", apesar de o typecheck passar limpo.
+    "incremental": false
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "**/*.test.ts"]
