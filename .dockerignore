@@ -1,0 +1,26 @@
+# O build instala e compila dentro da imagem: o que vem da maquina local so
+# atrapalha (node_modules de outra plataforma, dist velho, segredos).
+node_modules
+**/node_modules
+**/dist
+**/.next
+**/*.tsbuildinfo
+packages/database/generated
+
+# Segredos — nunca devem entrar na imagem.
+.env
+.env.*
+!.env.example
+
+.git
+.gitignore
+coverage
+*.log
+
+# O painel vai para a Vercel, nao para esta imagem.
+apps/web
+
+# Documentacao e infraestrutura local nao afetam o build.
+README.md
+DEPLOY.md
+docker-compose.yml

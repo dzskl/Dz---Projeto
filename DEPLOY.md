@@ -66,22 +66,85 @@ O painel importa `@tg/shared`, cujo `package.json` aponta para `dist/`. Como
 
 ---
 
-## 2. API em um provedor com processo continuo
+## 2. API na Railway
 
-A API precisa de PostgreSQL 15+, Redis e HTTPS.
+O `Dockerfile` e o `railway.json` na raiz ja descrevem tudo. O que voce faz no
+painel da Railway:
+
+**a) Crie o projeto e os bancos**
+
+1. **New Project → Deploy from GitHub repo** → escolha `dzskl/Dz---Projeto`.
+2. No mesmo projeto: **New → Database → Add PostgreSQL**.
+3. De novo: **New → Database → Add Redis**.
+
+Os tres ficam lado a lado no mesmo projeto — e assim que eles se enxergam pela
+rede interna.
+
+**b) Preencha as variaveis do servico da API**
+
+Em **Variables**, no servico da API (nao nos bancos):
+
+| Variavel | Valor |
+|---|---|
+| `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` |
+| `REDIS_URL` | `${{Redis.REDIS_URL}}` |
+| `NODE_ENV` | `production` |
+| `SESSION_SECRET` | gere com `openssl rand -base64 48` |
+| `ENCRYPTION_KEY` | gere com `openssl rand -hex 32` |
+| `WEB_ORIGIN` | endereco do painel, ex.: `https://dz-projeto.vercel.app` |
+| `API_PUBLIC_URL` | o endereco da propria API (item **c**) |
+
+As duas primeiras usam a sintaxe de referencia da Railway: ela substitui pelo
+endereco interno do banco sozinha. **Nao** defina `API_PORT` nem `PORT` — a
+Railway injeta a porta e a API a obedece.
+
+**c) Gere o endereco HTTPS**
+
+Em **Settings → Networking → Generate Domain**. A Railway devolve algo como
+`dz-projeto-production.up.railway.app`. Esse e o endereco que faltava:
+
+- cole em `API_PUBLIC_URL` (com `https://` na frente);
+- cole em `NEXT_PUBLIC_API_URL` na Vercel;
+- republique o painel na Vercel para a variavel entrar no bundle.
+
+**d) Crie as contas de dono**
+
+Uma unica vez, no terminal da Railway (**Settings → Deploy → Run command**) ou
+pela CLI:
 
 ```bash
-# No servidor
+SEED_ADMIN_EMAILS="voce@dominio.com,socio@dominio.com" pnpm db:seed
+```
+
+As senhas sao exibidas **uma unica vez**. Anote na hora.
+
+### Detalhes que evitam dor de cabeca
+
+- **As migrations rodam sozinhas a cada deploy** (`startCommand` do
+  `railway.json`). `migrate deploy` so aplica o que falta e nunca apaga dados.
+- **O Postgres da Railway e 16**, acima do minimo de 15 que o indice de opt-out
+  exige (`NULLS NOT DISTINCT`).
+- **`prisma`, `tsx` e `@node-rs/argon2` sao dependencias de producao** do
+  `@tg/database`, e nao de desenvolvimento. Parece errado, mas em producao esse
+  pacote existe justamente para rodar migration e seed: sem isso, a imagem
+  enxuta sobe e morre no boot com `prisma: not found`.
+
+---
+
+## 3. Alternativa: VPS com Docker
+
+```bash
 git clone <repo> && cd Dz---Projeto
 cp .env.example .env    # preencha os segredos
 docker compose up -d    # Postgres + Redis
-pnpm install
-pnpm db:deploy
-pnpm build
-node apps/api/dist/main.js
+docker build -t tg-api .
+docker run -d --env-file .env --network host tg-api
 ```
 
-Variaveis obrigatorias no `.env` da API:
+Falta ainda um proxy com HTTPS (Caddy ou nginx) na frente, porque o Telegram so
+aceita webhook em HTTPS e o cookie de sessao cross-site exige `Secure`.
+
+Variaveis obrigatorias, em qualquer provedor:
 
 | Variavel | Observacao |
 |---|---|
@@ -95,7 +158,7 @@ Variaveis obrigatorias no `.env` da API:
 
 ---
 
-## 3. O cookie de sessao entre dominios
+## 4. O cookie de sessao entre dominios
 
 Com o painel na Vercel e a API em outro provedor, as duas pontas ficam em hosts
 diferentes e a requisicao passa a ser **cross-site**. Um cookie `SameSite=Lax`

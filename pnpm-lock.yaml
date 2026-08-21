@@ -191,6 +191,9 @@ importers:
 
   packages/database:
     dependencies:
+      '@node-rs/argon2':
+        specifier: ^2.0.2
+        version: 2.1.0
       '@prisma/client':
         specifier: ^6.2.1
         version: 6.19.3(prisma@6.19.3(typescript@5.9.3))(typescript@5.9.3)
@@ -200,19 +203,16 @@ importers:
       '@tg/shared':
         specifier: workspace:*
         version: link:../shared
-    devDependencies:
-      '@node-rs/argon2':
-        specifier: ^2.0.2
-        version: 2.1.0
-      dotenv:
-        specifier: ^16.4.7
-        version: 16.6.1
       prisma:
         specifier: ^6.2.1
         version: 6.19.3(typescript@5.9.3)
       tsx:
         specifier: ^4.19.2
         version: 4.23.12
+    devDependencies:
+      dotenv:
+        specifier: ^16.4.7
+        version: 16.6.1
       typescript:
         specifier: ^5.7.3
         version: 5.9.3

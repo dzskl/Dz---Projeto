@@ -46,6 +46,21 @@ export type Env = z.infer<typeof schema>;
 let cached: Env | null = null;
 
 /**
+ * Ajusta o ambiente antes da validacao.
+ *
+ * Railway, Render, Heroku e Cloud Run injetam a porta em `PORT` e so entregam
+ * trafego para quem escuta exatamente nela. Quando ela existe, ela manda — e
+ * nao o `API_PORT`. A ordem importa: quem copia o `.env.example` inteiro para o
+ * painel do provedor acaba definindo `API_PORT=3333`, e ai o processo sobe
+ * saudavel numa porta que ninguem acessa. O deploy "da certo" e nada responde,
+ * que e o tipo de falha mais dificil de enxergar.
+ */
+function entradaDoAmbiente(): NodeJS.ProcessEnv {
+  const { PORT } = process.env;
+  return PORT ? { ...process.env, API_PORT: PORT } : process.env;
+}
+
+/**
  * Le e valida o ambiente uma unica vez.
  *
  * Em caso de erro, imprime todas as variaveis com problema de uma vez em vez de
@@ -54,7 +69,7 @@ let cached: Env | null = null;
 export function getEnv(): Env {
   if (cached) return cached;
 
-  const parsed = schema.safeParse(process.env);
+  const parsed = schema.safeParse(entradaDoAmbiente());
   if (!parsed.success) {
     const issues = parsed.error.issues
       .map((i) => `  - ${i.path.join('.')}: ${i.message}`)
