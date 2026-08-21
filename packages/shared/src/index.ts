@@ -2,4 +2,5 @@ export * from './enums.js';
 export * from './errors.js';
 export * from './schemas/auth.js';
 export * from './schemas/bot.js';
+export * from './schemas/contato.js';
 export * from './validate.js';

@@ -1,4 +1,4 @@
-import { ZodError, type ZodSchema } from 'zod';
+import { ZodError, type TypeOf, type ZodTypeAny } from 'zod';
 import { DomainError, ErrorCode } from './errors.js';
 
 /**
@@ -13,10 +13,15 @@ import { DomainError, ErrorCode } from './errors.js';
  *
  * Concentrando a checagem neste arquivo, o `instanceof` sempre compara classes
  * da mesma instancia do modulo.
+ *
+ * O generico e o proprio schema (e nao o tipo de saida) para que o retorno seja
+ * `TypeOf<S>`, ja com `.default()` e `.coerce` aplicados. Tipando por
+ * `ZodSchema<T>`, o TypeScript escolhia o tipo de ENTRADA e campos com valor
+ * padrao continuavam opcionais depois da validacao.
  */
-export function validate<T>(schema: ZodSchema<T>, value: unknown): T {
+export function validate<S extends ZodTypeAny>(schema: S, value: unknown): TypeOf<S> {
   try {
-    return schema.parse(value);
+    return schema.parse(value) as TypeOf<S>;
   } catch (err) {
     if (err instanceof ZodError) {
       // Agrupa as mensagens por campo para o formulario exibir cada erro no seu
