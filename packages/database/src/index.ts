@@ -1,3 +1,18 @@
+/**
+ * Import so pelo efeito colateral: o @tg/config carrega o .env da raiz.
+ *
+ * Precisa vir antes do @prisma/client. O cliente e construido no carregamento
+ * deste modulo e le DATABASE_URL nesse instante; se ninguem tiver carregado o
+ * .env ainda, ele falha com "Environment variable not found: DATABASE_URL"
+ * mesmo com o arquivo no lugar certo. A API funcionava por acaso, porque o
+ * main.ts importa o @tg/config algumas linhas antes — o seed, que importa este
+ * modulo direto, nao tinha essa sorte. Deixar a garantia aqui vale para
+ * qualquer ponto de entrada.
+ *
+ * Nao dispara validacao: o @tg/config so le o arquivo no carregamento, e a
+ * validacao acontece dentro do getEnv().
+ */
+import '@tg/config';
 import { PrismaClient } from '@prisma/client';
 
 export * from '@prisma/client';
