@@ -45,8 +45,7 @@ const ITENS: Item[] = [
     href: '/painel/contatos',
     rotulo: 'Contatos',
     icone: icone('M17 20v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 7a4 4 0 108 0 4 4 0 00-8 0'),
-    disponivel: false,
-    fase: 'Fase 3',
+    disponivel: true,
   },
   {
     href: '/painel/campanhas',
