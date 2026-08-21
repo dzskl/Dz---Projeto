@@ -25,7 +25,8 @@
     "db:studio": "pnpm --filter @tg/database run studio",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
-    "setup": "pnpm install && pnpm db:generate"
+    "setup": "pnpm install && pnpm db:generate",
+    "env:criar": "node scripts/criar-env.mjs"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
