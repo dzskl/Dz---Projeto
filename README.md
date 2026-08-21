@@ -41,28 +41,30 @@ nada.
 **Pre-requisitos:** Node 20+, pnpm 10+, Docker.
 
 ```bash
-# 1. Dependencias
-pnpm install
+git clone https://github.com/dzskl/Dz---Projeto.git
+cd Dz---Projeto
 
-# 2. Infraestrutura (Postgres + Redis)
-docker compose up -d
+# 1. Cria o .env com SESSION_SECRET e ENCRYPTION_KEY ja gerados
+pnpm env:criar
 
-# 3. Configuracao
-cp .env.example .env
-#    Gere os segredos e cole no .env:
-openssl rand -base64 48   # -> SESSION_SECRET
-openssl rand -hex 32      # -> ENCRYPTION_KEY
+# 2. Postgres e Redis (--wait espera ficarem prontos de verdade)
+docker compose up -d --wait
 
-# 4. Banco
-pnpm db:generate
+# 3. Instala, gera o client do Prisma e compila os pacotes
+pnpm preparar
+
+# 4. Cria as tabelas
 pnpm db:deploy
 
 # 5. Contas de dono (a senha e exibida uma unica vez)
 SEED_ADMIN_EMAILS="voce@dominio.com,socio@dominio.com" pnpm db:seed
 
-# 6. Subir tudo
+# 6. Subir
 pnpm dev
 ```
+
+> No Windows, use o **Git Bash**. O `pnpm env:criar` dispensa gerar as chaves na
+> mao e nao sobrescreve um `.env` que ja exista.
 
 | Servico | Endereco |
 |---|---|
@@ -94,6 +96,8 @@ pnpm dev
 
 | Comando | O que faz |
 |---|---|
+| `pnpm env:criar` | Cria o .env com os segredos gerados |
+| `pnpm preparar` | Instala, gera o client do Prisma e compila os pacotes |
 | `pnpm dev` | Sobe API (com os workers de envio) e painel |
 | `pnpm build` | Compila tudo |
 | `pnpm test` | Roda os testes (num banco separado, ver abaixo) |
