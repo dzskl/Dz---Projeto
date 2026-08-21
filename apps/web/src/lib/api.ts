@@ -1,4 +1,4 @@
-import type { AdminPublic, ApiErrorBody, ErrorCode } from '@tg/shared';
+import type { AdminPublic, ApiErrorBody, BotPublico, ErrorCode } from '@tg/shared';
 
 /**
  * Cliente HTTP do painel.
@@ -76,4 +76,25 @@ export const api = {
 
   saude: () =>
     requisicao<{ status: string; database: { ok: boolean; latencyMs: number } }>('/health'),
+
+  bots: {
+    listar: () => requisicao<{ bots: BotPublico[] }>('/bots'),
+
+    criar: (token: string, apelido?: string) =>
+      requisicao<{ bot: BotPublico }>('/bots', {
+        method: 'POST',
+        body: JSON.stringify({ token, ...(apelido ? { apelido } : {}) }),
+      }),
+
+    atualizar: (id: string, dados: { isActive?: boolean; ratePerSecond?: number; apelido?: string }) =>
+      requisicao<{ bot: BotPublico }>(`/bots/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(dados),
+      }),
+
+    reconectar: (id: string) =>
+      requisicao<{ bot: BotPublico }>(`/bots/${id}/reconectar`, { method: 'POST' }),
+
+    excluir: (id: string) => requisicao<void>(`/bots/${id}`, { method: 'DELETE' }),
+  },
 };

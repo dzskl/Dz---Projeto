@@ -39,8 +39,7 @@ const ITENS: Item[] = [
     href: '/painel/bots',
     rotulo: 'Bots',
     icone: icone('M12 8V4m-4 4h8a2 2 0 012 2v8a2 2 0 01-2 2H8a2 2 0 01-2-2v-8a2 2 0 012-2zm1 5h.01M15 13h.01'),
-    disponivel: false,
-    fase: 'Fase 2',
+    disponivel: true,
   },
   {
     href: '/painel/contatos',
