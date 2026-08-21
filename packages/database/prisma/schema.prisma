@@ -1,0 +1,499 @@
+// Schema da Plataforma de Gestao e Automacao para Telegram.
+//
+// Convencoes:
+//  - IDs internos sao UUID; IDs do Telegram sao BigInt (podem passar de 2^31,
+//    e IDs de canal sao negativos e grandes).
+//  - Toda data e armazenada em UTC (timestamptz).
+//  - Constraints unicas fazem o trabalho pesado de integridade: duplicidade de
+//    envio e reprocessamento de webhook sao impedidos pelo banco, nao pela
+//    logica da aplicacao.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// ACESSO ADMINISTRATIVO
+// ---------------------------------------------------------------------------
+
+enum AdminRole {
+  OWNER
+  ADMIN
+  OPERATOR
+  VIEWER
+}
+
+model Admin {
+  id           String    @id @default(uuid()) @db.Uuid
+  email        String    @unique
+  name         String
+  passwordHash String    @map("password_hash")
+  role         AdminRole @default(OWNER)
+  isActive     Boolean   @default(true) @map("is_active")
+  lastLoginAt  DateTime? @map("last_login_at") @db.Timestamptz(3)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  sessions   Session[]
+  auditLogs  AuditLog[]
+  campaigns  Campaign[]
+  optOuts    OptOut[]
+  mediaFiles MediaAsset[]
+
+  @@map("admins")
+}
+
+model Session {
+  id        String    @id @default(uuid()) @db.Uuid
+  adminId   String    @map("admin_id") @db.Uuid
+  // Guardamos o hash do token, nunca o token: vazamento do banco nao permite
+  // sequestrar sessao.
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(3)
+  revokedAt DateTime? @map("revoked_at") @db.Timestamptz(3)
+  ip        String?
+  userAgent String?   @map("user_agent")
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  admin Admin @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([adminId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  adminId    String?  @map("admin_id") @db.Uuid
+  action     String
+  entityType String?  @map("entity_type")
+  entityId   String?  @map("entity_id")
+  ip         String?
+  userAgent  String?  @map("user_agent")
+  metadata   Json?
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  // Auditoria sobrevive a exclusao do admin: o registro do que foi feito nao
+  // pode desaparecer junto com quem fez.
+  admin Admin? @relation(fields: [adminId], references: [id], onDelete: SetNull)
+
+  @@index([adminId, createdAt])
+  @@index([action, createdAt])
+  @@map("audit_logs")
+}
+
+// ---------------------------------------------------------------------------
+// BOTS E CHATS
+// ---------------------------------------------------------------------------
+
+enum BotStatus {
+  CONNECTED
+  DISABLED
+  INVALID_TOKEN
+  ERROR
+}
+
+model Bot {
+  id            String    @id @default(uuid()) @db.Uuid
+  telegramBotId BigInt    @unique @map("telegram_bot_id")
+  username      String
+  name          String
+  // Token cifrado com AES-256-GCM (chave no Secret Manager). Nunca sai da API.
+  tokenEncrypted String   @map("token_encrypted")
+  // Ultimos 4 digitos, so para o admin reconhecer qual token e.
+  tokenHint     String    @map("token_hint")
+  // Enviado pelo Telegram no header a cada webhook; unico por bot.
+  webhookSecret String    @map("webhook_secret")
+  status        BotStatus @default(CONNECTED)
+  isActive      Boolean   @default(true) @map("is_active")
+  ratePerSecond Int       @default(20) @map("rate_per_second")
+  lastCheckAt   DateTime? @map("last_check_at") @db.Timestamptz(3)
+  lastErrorAt   DateTime? @map("last_error_at") @db.Timestamptz(3)
+  lastError     String?   @map("last_error")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  chats     Chat[]
+  botUsers  BotUser[]
+  optOuts   OptOut[]
+  campaigns Campaign[]
+  updates   TelegramUpdate[]
+  sendLogs  SendLog[]
+
+  @@index([status])
+  @@map("bots")
+}
+
+enum ChatType {
+  PRIVATE
+  GROUP
+  SUPERGROUP
+  CHANNEL
+}
+
+enum BotChatStatus {
+  MEMBER
+  ADMINISTRATOR
+  LEFT
+  KICKED
+}
+
+/// Grupos e canais onde o bot esta presente.
+///
+/// A Bot API nao permite listar os membros — por isso nao existe tabela de
+/// "membros do chat". So sabemos o total (memberCount) e quem sao os admins.
+model Chat {
+  id             String        @id @default(uuid()) @db.Uuid
+  botId          String        @map("bot_id") @db.Uuid
+  telegramChatId BigInt        @map("telegram_chat_id")
+  type           ChatType
+  title          String?
+  username       String?
+  memberCount    Int?          @map("member_count")
+  botStatus      BotChatStatus @default(MEMBER) @map("bot_status")
+  lastSeenAt     DateTime?     @map("last_seen_at") @db.Timestamptz(3)
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  bot Bot @relation(fields: [botId], references: [id], onDelete: Cascade)
+
+  @@unique([botId, telegramChatId])
+  @@index([botId, type])
+  @@map("chats")
+}
+
+// ---------------------------------------------------------------------------
+// PESSOAS E ELEGIBILIDADE
+// ---------------------------------------------------------------------------
+
+/// Identidade da pessoa no Telegram, independente de bot.
+model TelegramUser {
+  id             String   @id @default(uuid()) @db.Uuid
+  telegramUserId BigInt   @unique @map("telegram_user_id")
+  firstName      String?  @map("first_name")
+  lastName       String?  @map("last_name")
+  username       String?
+  languageCode   String?  @map("language_code")
+  isBot          Boolean  @default(false) @map("is_bot")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  botUsers BotUser[]
+  optOuts  OptOut[]
+
+  @@index([username])
+  @@map("telegram_users")
+}
+
+enum BotUserStatus {
+  ACTIVE
+  BLOCKED_BOT
+  DEACTIVATED
+  UNSUBSCRIBED
+}
+
+enum ConsentSource {
+  START_COMMAND
+  PRIVATE_MESSAGE
+  CALLBACK_QUERY
+  MANUAL
+}
+
+/// Relacao entre uma pessoa e um bot — e a tabela que define quem pode receber.
+///
+/// Existe uma linha por par (bot, usuario) porque a mesma pessoa pode ter dado
+/// /start no bot A e bloqueado o bot B. `privateChatId` so e preenchido quando a
+/// pessoa abriu conversa privada; sem ele nao ha como enviar mensagem.
+model BotUser {
+  id                String        @id @default(uuid()) @db.Uuid
+  botId             String        @map("bot_id") @db.Uuid
+  telegramUserId    String        @map("telegram_user_id") @db.Uuid
+  privateChatId     BigInt?       @map("private_chat_id")
+  status            BotUserStatus @default(ACTIVE)
+  consentSource     ConsentSource @map("consent_source")
+  consentAt         DateTime      @map("consent_at") @db.Timestamptz(3)
+  /// Parametro do deep link (t.me/bot?start=origem) — mede o canal de captacao.
+  consentPayload    String?       @map("consent_payload")
+  lastInteractionAt DateTime?     @map("last_interaction_at") @db.Timestamptz(3)
+  statusChangedAt   DateTime?     @map("status_changed_at") @db.Timestamptz(3)
+  createdAt         DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  bot          Bot          @relation(fields: [botId], references: [id], onDelete: Cascade)
+  telegramUser TelegramUser @relation(fields: [telegramUserId], references: [id], onDelete: Cascade)
+  recipients   CampaignRecipient[]
+
+  @@unique([botId, telegramUserId])
+  // Indice do publico-alvo: a consulta que monta a campanha filtra por bot +
+  // status e so considera quem tem chat privado.
+  @@index([botId, status])
+  @@index([botId, lastInteractionAt])
+  @@map("bot_users")
+}
+
+enum OptOutReason {
+  USER_REQUEST
+  BLOCKED_BOT
+  DEACTIVATED
+  MANUAL
+}
+
+/// Lista de quem nunca deve receber campanha.
+///
+/// `botId` nulo significa opt-out global (vale para todos os bots).
+model OptOut {
+  id             String       @id @default(uuid()) @db.Uuid
+  botId          String?      @map("bot_id") @db.Uuid
+  telegramUserId String       @map("telegram_user_id") @db.Uuid
+  reason         OptOutReason
+  note           String?
+  createdByAdminId String?    @map("created_by_admin_id") @db.Uuid
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  bot            Bot?         @relation(fields: [botId], references: [id], onDelete: Cascade)
+  telegramUser   TelegramUser @relation(fields: [telegramUserId], references: [id], onDelete: Cascade)
+  createdByAdmin Admin?       @relation(fields: [createdByAdminId], references: [id], onDelete: SetNull)
+
+  @@unique([botId, telegramUserId])
+  @@index([telegramUserId])
+  @@map("opt_outs")
+}
+
+// ---------------------------------------------------------------------------
+// MIDIA
+// ---------------------------------------------------------------------------
+
+enum MessageKind {
+  TEXT
+  PHOTO
+  VIDEO
+  DOCUMENT
+  AUDIO
+  VOICE
+  ANIMATION
+}
+
+/// Biblioteca de midia reutilizavel.
+///
+/// `telegramFileId` e o ganho principal: depois do primeiro envio o Telegram
+/// devolve um identificador do arquivo ja hospedado nele. Reusando esse id, as
+/// mensagens seguintes nao reenviam os bytes — a diferenca entre horas e
+/// minutos numa campanha com video.
+///
+/// `parentId` liga uma derivada (versao otimizada, com marca d'agua, cortada) ao
+/// arquivo original, preservando o original intacto.
+model MediaAsset {
+  id             String      @id @default(uuid()) @db.Uuid
+  filename       String
+  mimeType       String      @map("mime_type")
+  sizeBytes      Int         @map("size_bytes")
+  kind           MessageKind
+  width          Int?
+  height         Int?
+  durationSec    Int?        @map("duration_sec")
+  /// Caminho no Cloud Storage (ou no disco local em desenvolvimento).
+  storagePath    String      @map("storage_path")
+  checksumSha256 String?     @map("checksum_sha256")
+  telegramFileId String?     @map("telegram_file_id")
+  /// Como esta derivada foi gerada (ex.: "optimize:telegram", "watermark:logo").
+  derivedVia     String?     @map("derived_via")
+  parentId       String?     @map("parent_id") @db.Uuid
+  uploadedById   String?     @map("uploaded_by_id") @db.Uuid
+  createdAt      DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  parent     MediaAsset?  @relation("MediaDerivatives", fields: [parentId], references: [id], onDelete: SetNull)
+  variants   MediaAsset[] @relation("MediaDerivatives")
+  uploadedBy Admin?       @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  messages   CampaignMessage[]
+
+  @@index([kind])
+  @@index([checksumSha256])
+  @@map("media_assets")
+}
+
+// ---------------------------------------------------------------------------
+// CAMPANHAS
+// ---------------------------------------------------------------------------
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  RUNNING
+  PAUSED
+  COMPLETED
+  CANCELLED
+  FAILED
+}
+
+model Campaign {
+  id             String         @id @default(uuid()) @db.Uuid
+  name           String
+  botId          String         @map("bot_id") @db.Uuid
+  status         CampaignStatus @default(DRAFT)
+  /// Filtro do publico (ex.: intervalo de ultima interacao, origem do consentimento).
+  audienceFilter Json?          @map("audience_filter")
+  scheduledAt    DateTime?      @map("scheduled_at") @db.Timestamptz(3)
+  startedAt      DateTime?      @map("started_at") @db.Timestamptz(3)
+  finishedAt     DateTime?      @map("finished_at") @db.Timestamptz(3)
+  ratePerSecond  Int            @default(20) @map("rate_per_second")
+
+  // Contadores desnormalizados: o dashboard precisa deles a cada segundo e
+  // contar linhas de campaign_recipients a cada refresh nao escala.
+  totalRecipients Int @default(0) @map("total_recipients")
+  sentCount       Int @default(0) @map("sent_count")
+  failedCount     Int @default(0) @map("failed_count")
+  blockedCount    Int @default(0) @map("blocked_count")
+  skippedCount    Int @default(0) @map("skipped_count")
+
+  createdByAdminId String?  @map("created_by_admin_id") @db.Uuid
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  bot            Bot                 @relation(fields: [botId], references: [id], onDelete: Restrict)
+  createdByAdmin Admin?              @relation(fields: [createdByAdminId], references: [id], onDelete: SetNull)
+  messages       CampaignMessage[]
+  recipients     CampaignRecipient[]
+  sendLogs       SendLog[]
+
+  @@index([status, scheduledAt])
+  @@index([botId, status])
+  @@map("campaigns")
+}
+
+/// Partes da mensagem de uma campanha, na ordem de envio.
+model CampaignMessage {
+  id           String      @id @default(uuid()) @db.Uuid
+  campaignId   String      @map("campaign_id") @db.Uuid
+  order        Int
+  kind         MessageKind
+  text         String?
+  parseMode    String?     @map("parse_mode")
+  caption      String?
+  mediaAssetId String?     @map("media_asset_id") @db.Uuid
+  /// Botoes inline (inline_keyboard do Telegram).
+  buttons      Json?
+  createdAt    DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  campaign   Campaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  mediaAsset MediaAsset? @relation(fields: [mediaAssetId], references: [id], onDelete: SetNull)
+
+  @@unique([campaignId, order])
+  @@map("campaign_messages")
+}
+
+enum RecipientStatus {
+  PENDING
+  QUEUED
+  SENT
+  FAILED
+  SKIPPED
+  BLOCKED
+}
+
+/// Lista congelada de destinatarios de uma campanha.
+///
+/// Materializada no inicio da campanha. Garante contagem exata, retomada apos
+/// queda e trilha de auditoria. A constraint unica (campaignId, botUserId) e o
+/// que torna envio duplicado impossivel no banco — nao apenas improvavel.
+model CampaignRecipient {
+  id                String          @id @default(uuid()) @db.Uuid
+  campaignId        String          @map("campaign_id") @db.Uuid
+  botUserId         String          @map("bot_user_id") @db.Uuid
+  status            RecipientStatus @default(PENDING)
+  attempts          Int             @default(0)
+  lastErrorCode     String?         @map("last_error_code")
+  lastErrorMessage  String?         @map("last_error_message")
+  telegramMessageId BigInt?         @map("telegram_message_id")
+  queuedAt          DateTime?       @map("queued_at") @db.Timestamptz(3)
+  sentAt            DateTime?       @map("sent_at") @db.Timestamptz(3)
+  failedAt          DateTime?       @map("failed_at") @db.Timestamptz(3)
+  createdAt         DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  botUser  BotUser  @relation(fields: [botUserId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, botUserId])
+  // Consulta quente do worker: proximos pendentes de uma campanha.
+  @@index([campaignId, status])
+  @@map("campaign_recipients")
+}
+
+/// Registro de cada tentativa de envio — inclusive as que falharam.
+model SendLog {
+  id                 String   @id @default(uuid()) @db.Uuid
+  campaignId         String?  @map("campaign_id") @db.Uuid
+  recipientId        String?  @map("recipient_id") @db.Uuid
+  botId              String   @map("bot_id") @db.Uuid
+  attempt            Int      @default(1)
+  success            Boolean
+  httpStatus         Int?     @map("http_status")
+  telegramErrorCode  String?  @map("telegram_error_code")
+  errorDescription   String?  @map("error_description")
+  retryAfterSec      Int?     @map("retry_after_sec")
+  durationMs         Int?     @map("duration_ms")
+  /// Liga log, job e requisicao HTTP que originou a acao.
+  correlationId      String?  @map("correlation_id")
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  campaign Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  bot      Bot       @relation(fields: [botId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId, createdAt])
+  @@index([botId, createdAt])
+  @@index([correlationId])
+  @@map("send_logs")
+}
+
+// ---------------------------------------------------------------------------
+// ENTRADA E MONITORAMENTO
+// ---------------------------------------------------------------------------
+
+/// Updates recebidos do Telegram.
+///
+/// A unicidade (botId, updateId) torna o webhook idempotente: o Telegram
+/// reentrega updates quando nao recebe 200, e a reentrega nao pode duplicar
+/// consentimento nem opt-out.
+model TelegramUpdate {
+  id          String    @id @default(uuid()) @db.Uuid
+  botId       String    @map("bot_id") @db.Uuid
+  updateId    BigInt    @map("update_id")
+  type        String
+  payload     Json
+  processedAt DateTime? @map("processed_at") @db.Timestamptz(3)
+  error       String?
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  bot Bot @relation(fields: [botId], references: [id], onDelete: Cascade)
+
+  @@unique([botId, updateId])
+  @@index([botId, createdAt])
+  @@map("telegram_updates")
+}
+
+enum EventSeverity {
+  INFO
+  WARNING
+  ERROR
+  CRITICAL
+}
+
+/// Eventos exibidos como alertas no painel (worker parado, bot invalido, etc).
+model SystemEvent {
+  id         String        @id @default(uuid()) @db.Uuid
+  severity   EventSeverity
+  source     String
+  code       String
+  message    String
+  metadata   Json?
+  resolvedAt DateTime?     @map("resolved_at") @db.Timestamptz(3)
+  createdAt  DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@index([severity, resolvedAt])
+  @@index([createdAt])
+  @@map("system_events")
+}
