@@ -3,11 +3,13 @@ import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
 import { BotsModule } from './bots/bots.module';
+import { ContatosModule } from './contatos/contatos.module';
 import { DomainExceptionFilter } from './common/filters/domain-exception.filter';
 import { AuthGuard } from './common/guards/auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { HealthModule } from './health/health.module';
 import { TelegramModule } from './telegram/telegram.module';
+import { UpdatesModule } from './updates/updates.module';
 
 /**
  * Modulo raiz.
@@ -17,7 +19,7 @@ import { TelegramModule } from './telegram/telegram.module';
  * — AuthGuard preenche request.admin, que o RolesGuard le em seguida.
  */
 @Module({
-  imports: [AuditModule, AuthModule, TelegramModule, BotsModule, HealthModule],
+  imports: [AuditModule, AuthModule, UpdatesModule, TelegramModule, BotsModule, ContatosModule, HealthModule],
   providers: [
     { provide: APP_FILTER, useClass: DomainExceptionFilter },
     { provide: APP_GUARD, useClass: AuthGuard },

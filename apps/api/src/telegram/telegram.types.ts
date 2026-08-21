@@ -27,6 +27,13 @@ export interface InfoWebhook {
 export interface TelegramApi {
   /** Valida o token e devolve a identidade do bot. */
   getMe(): Promise<DadosDoBot>;
+  /**
+   * Envia uma mensagem de texto.
+   *
+   * Devolve o id da mensagem. Lanca ErroTelegram com `destinatarioIndisponivel`
+   * quando a pessoa bloqueou o bot ou desativou a conta.
+   */
+  sendMessage(chatId: number | bigint, texto: string): Promise<number>;
   /** Registra o endereco que recebera os updates. */
   setWebhook(url: string, secretToken: string): Promise<void>;
   /** Remove o webhook (usado ao desativar ou excluir o bot). */
@@ -54,6 +61,13 @@ export class ErroTelegram extends Error {
     message: string,
     readonly statusCode: number | undefined,
     readonly tokenInvalido: boolean,
+    /**
+     * A pessoa bloqueou o bot, apagou a conta ou o chat sumiu.
+     *
+     * Separado de tokenInvalido porque a consequencia e outra: nao ha nada de
+     * errado com o bot, apenas aquele destinatario deixou de ser alcancavel.
+     */
+    readonly destinatarioIndisponivel = false,
   ) {
     super(message);
     this.name = 'ErroTelegram';

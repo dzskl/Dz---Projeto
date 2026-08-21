@@ -2,6 +2,7 @@ import { Body, Controller, Headers, HttpCode, HttpStatus, Param, Post } from '@n
 import { createLogger, safeCompare } from '@tg/config';
 import { Prisma, prisma } from '@tg/database';
 import { Public } from '../common/decorators/public.decorator';
+import { UpdatesService } from '../updates/updates.service';
 
 const logger = createLogger('webhook');
 
@@ -31,6 +32,8 @@ const UNIQUE_VIOLATION = 'P2002';
  */
 @Controller('telegram')
 export class WebhookController {
+  constructor(private readonly updates: UpdatesService) {}
+
   @Public()
   @Post('webhook/:botId')
   @HttpCode(HttpStatus.OK)
@@ -67,7 +70,7 @@ export class WebhookController {
     }
 
     try {
-      await prisma.telegramUpdate.create({
+      const gravado = await prisma.telegramUpdate.create({
         data: {
           botId: bot.id,
           updateId: BigInt(updateId),
@@ -75,6 +78,9 @@ export class WebhookController {
           payload: update as Prisma.InputJsonValue,
         },
       });
+      // Fora do ciclo da requisicao: a resposta ao Telegram nao espera o
+      // processamento. Se falhar, a varredura periodica repete.
+      this.updates.agendar(gravado.id);
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === UNIQUE_VIOLATION) {
         // Ja recebemos este update: reentrega do Telegram. Nada a fazer.

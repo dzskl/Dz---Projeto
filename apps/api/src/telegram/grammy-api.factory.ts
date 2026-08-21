@@ -25,10 +25,19 @@ import { ErroTelegram } from './telegram.types';
 function traduzirErro(err: unknown): ErroTelegram {
   if (err instanceof GrammyError) {
     const definitivo = err.error_code === 401 || err.error_code === 404;
+    /**
+     * 403 significa que aquele destinatario especifico ficou inalcancavel:
+     * bloqueou o bot, apagou a conta ou o bot foi removido do grupo. Nao ha o
+     * que retentar, mas o bot continua saudavel.
+     */
+    const indisponivel =
+      err.error_code === 403 ||
+      /bot was blocked|user is deactivated|chat not found/i.test(err.description);
     return new ErroTelegram(
       definitivo ? 'Token recusado pelo Telegram.' : err.description,
       err.error_code,
       definitivo,
+      indisponivel,
     );
   }
   if (err instanceof HttpError) {
@@ -59,6 +68,15 @@ class GrammyTelegramApi implements TelegramApi {
         canJoinGroups: me.can_join_groups ?? false,
         canReadAllGroupMessages: me.can_read_all_group_messages ?? false,
       };
+    } catch (err) {
+      throw traduzirErro(err);
+    }
+  }
+
+  async sendMessage(chatId: number | bigint, texto: string): Promise<number> {
+    try {
+      const msg = await this.api.sendMessage(Number(chatId), texto);
+      return msg.message_id;
     } catch (err) {
       throw traduzirErro(err);
     }
