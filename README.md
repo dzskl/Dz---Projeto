@@ -79,9 +79,8 @@ pnpm dev
 ```
 .
 ├── apps/
-│   ├── api/          NestJS — REST, webhooks, SSE
-│   ├── web/          Next.js — painel
-│   └── worker/       BullMQ — envio das campanhas
+│   ├── api/          NestJS — REST, webhooks, workers de envio
+│   └── web/          Next.js — painel
 ├── packages/
 │   ├── database/     Prisma: schema, migrations, seed
 │   ├── shared/       enums, schemas Zod, erros de dominio
@@ -95,9 +94,9 @@ pnpm dev
 
 | Comando | O que faz |
 |---|---|
-| `pnpm dev` | Sobe API, worker e painel |
+| `pnpm dev` | Sobe API (com os workers de envio) e painel |
 | `pnpm build` | Compila tudo |
-| `pnpm test` | Roda os testes |
+| `pnpm test` | Roda os testes (num banco separado, ver abaixo) |
 | `pnpm typecheck` | Verifica tipos |
 | `pnpm lint` | ESLint |
 | `pnpm format` | Prettier |
@@ -105,6 +104,20 @@ pnpm dev
 | `pnpm db:deploy` | Aplica migrations (producao) |
 | `pnpm db:seed` | Cria contas de dono |
 | `pnpm db:studio` | Abre o Prisma Studio |
+
+---
+
+## Testes
+
+Os testes limpam tabelas inteiras. Para nao apagarem os seus dados, eles rodam
+num banco separado: `TEST_DATABASE_URL`, ou o `DATABASE_URL` com `_test` no fim
+do nome. Crie-o uma vez:
+
+```bash
+createdb telegram_platform_test
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/telegram_platform_test" pnpm db:deploy
+pnpm test
+```
 
 ---
 
@@ -146,9 +159,9 @@ Secret Manager (producao).
 
 | Fase | Escopo | Situacao |
 |---|---|---|
-| 1 | Estrutura, banco, autenticacao, layout | banco e base concluidos |
-| 2 | Integracao com Telegram e cadastro de bots | pendente |
-| 3 | Usuarios, grupos, consentimento e opt-out | pendente |
-| 4 | Campanhas, fila, workers e retry | pendente |
+| 1 | Estrutura, banco, autenticacao, painel | concluida |
+| 2 | Integracao com Telegram e cadastro de bots | concluida |
+| 3 | Usuarios, grupos, consentimento e opt-out | concluida |
+| 4 | Campanhas, fila, workers e retry | concluida |
 | 5 | Monitoramento e tempo real | pendente |
 | 6 | Testes, seguranca, Docker e deploy | pendente |

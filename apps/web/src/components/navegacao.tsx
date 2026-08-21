@@ -51,15 +51,14 @@ const ITENS: Item[] = [
     href: '/painel/campanhas',
     rotulo: 'Campanhas',
     icone: icone('M3 11l18-8-8 18-2-7-8-3z'),
-    disponivel: false,
-    fase: 'Fase 4',
+    disponivel: true,
   },
   {
     href: '/painel/midia',
     rotulo: 'Midia',
     icone: icone('M3 5h18v14H3zM3 15l5-5 4 4 3-3 6 6'),
     disponivel: false,
-    fase: 'Fase 4',
+    fase: 'Em breve',
   },
 ];
 

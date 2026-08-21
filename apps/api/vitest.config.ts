@@ -1,5 +1,15 @@
+import { config as loadDotenv } from 'dotenv';
 import swc from 'unplugin-swc';
 import { defineConfig } from 'vitest/config';
+
+/**
+ * O .env precisa ser lido aqui, e nao so pelo @tg/config.
+ *
+ * Este arquivo escolhe o banco de teste antes de qualquer modulo da aplicacao
+ * carregar. Sem isto, `pnpm test` num terminal limpo enxergaria DATABASE_URL
+ * vazia e o Prisma falharia — mesmo com o .env no lugar certo.
+ */
+loadDotenv({ path: new URL('../../.env', import.meta.url).pathname });
 
 /**
  * Banco de testes separado.

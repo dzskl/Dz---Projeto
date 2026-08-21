@@ -30,6 +30,7 @@
   },
   "devDependencies": {
     "@node-rs/argon2": "^2.0.2",
+    "dotenv": "^16.4.7",
     "prisma": "^6.2.1",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3",

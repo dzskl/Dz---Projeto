@@ -2,9 +2,12 @@ import type {
   AdminPublic,
   ApiErrorBody,
   BotPublico,
+  CampanhaPublica,
+  CriarCampanhaInput,
   ErrorCode,
   OptOutPublico,
   PaginaDeContatos,
+  PreviaDoPublico,
 } from '@tg/shared';
 
 /**
@@ -125,5 +128,26 @@ export const api = {
 
     removerOptOut: (id: string) =>
       requisicao<void>(`/contatos/opt-outs/${id}`, { method: 'DELETE' }),
+  },
+
+  campanhas: {
+    listar: (botId?: string) =>
+      requisicao<{ campanhas: CampanhaPublica[] }>(
+        `/campanhas${botId ? `?botId=${botId}` : ''}`,
+      ),
+
+    buscar: (id: string) => requisicao<{ campanha: CampanhaPublica }>(`/campanhas/${id}`),
+
+    previa: (id: string) => requisicao<PreviaDoPublico>(`/campanhas/${id}/previa`),
+
+    criar: (dados: CriarCampanhaInput) =>
+      requisicao<{ campanha: CampanhaPublica }>('/campanhas', {
+        method: 'POST',
+        body: JSON.stringify(dados),
+      }),
+
+    /** iniciar | pausar | retomar | cancelar */
+    acao: (id: string, acao: 'iniciar' | 'pausar' | 'retomar' | 'cancelar') =>
+      requisicao<{ campanha: CampanhaPublica }>(`/campanhas/${id}/${acao}`, { method: 'POST' }),
   },
 };
