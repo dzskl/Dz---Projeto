@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import { config as loadDotenv } from 'dotenv';
 import swc from 'unplugin-swc';
 import { defineConfig } from 'vitest/config';
@@ -9,7 +10,7 @@ import { defineConfig } from 'vitest/config';
  * carregar. Sem isto, `pnpm test` num terminal limpo enxergaria DATABASE_URL
  * vazia e o Prisma falharia — mesmo com o .env no lugar certo.
  */
-loadDotenv({ path: new URL('../../.env', import.meta.url).pathname });
+loadDotenv({ path: fileURLToPath(new URL('../../.env', import.meta.url)) });
 
 /**
  * Banco de testes separado.

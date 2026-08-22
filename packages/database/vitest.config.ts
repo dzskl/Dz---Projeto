@@ -1,9 +1,10 @@
+import { fileURLToPath } from 'node:url';
 import { config as loadDotenv } from 'dotenv';
 import { defineConfig } from 'vitest/config';
 
 // Lido aqui porque a escolha do banco acontece antes de qualquer modulo da
 // aplicacao carregar; sem isto, `pnpm test` num terminal limpo veria a URL vazia.
-loadDotenv({ path: new URL('../../.env', import.meta.url).pathname });
+loadDotenv({ path: fileURLToPath(new URL('../../.env', import.meta.url)) });
 
 /**
  * Banco de testes separado.

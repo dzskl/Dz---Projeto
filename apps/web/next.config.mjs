@@ -1,3 +1,18 @@
+import { fileURLToPath } from 'node:url';
+import { config as loadDotenv } from 'dotenv';
+
+/**
+ * O .env do monorepo fica na raiz; o Next procura na pasta do proprio app.
+ *
+ * Sem isto, NEXT_PUBLIC_API_URL nunca chega ao bundle e o painel nao sabe onde
+ * a API esta — mesmo com o valor correto no .env. O sintoma engana, porque a
+ * tela abre normalmente e so as chamadas falham.
+ *
+ * fileURLToPath, e nao url.pathname: no Windows o pathname vem como
+ * "/C:/caminho" e o arquivo nao e encontrado.
+ */
+loadDotenv({ path: fileURLToPath(new URL('../../.env', import.meta.url)) });
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
