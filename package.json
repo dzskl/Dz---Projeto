@@ -26,7 +26,8 @@
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
     "preparar": "pnpm install && pnpm db:generate && pnpm -r --filter \"./packages/**\" build",
-    "env:criar": "node scripts/criar-env.mjs"
+    "env:criar": "node scripts/criar-env.mjs",
+    "env:codespaces": "node scripts/env-codespaces.mjs"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
