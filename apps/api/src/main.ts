@@ -43,7 +43,22 @@ async function bootstrap(): Promise<void> {
   logger.info({ port: env.API_PORT, env: env.NODE_ENV }, 'API no ar');
 }
 
+/** O banco existe mas nao tem as tabelas: falta rodar as migrations. */
+function bancoSemTabelas(err: unknown): boolean {
+  return typeof err === 'object' && err !== null && (err as { code?: string }).code === 'P2021';
+}
+
 bootstrap().catch((err: unknown) => {
+  /**
+   * Banco sem migrations e o erro mais comum de quem esta subindo o projeto
+   * pela primeira vez, e o rastro de pilha do Prisma esconde o que fazer atras
+   * de sessenta linhas. Uma frase vale mais aqui.
+   */
+  if (bancoSemTabelas(err)) {
+    logger.fatal('O banco nao tem as tabelas. Rode: pnpm db:deploy');
+    process.exit(1);
+  }
+
   logger.fatal({ err }, 'falha ao iniciar a API');
   process.exit(1);
 });
