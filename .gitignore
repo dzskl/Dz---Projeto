@@ -26,6 +26,8 @@ coverage/
 *.sqlite
 pgdata/
 uploads/
+# Snapshot do Redis: e gravado no diretorio de onde o servidor subiu
+dump.rdb
 
 # Logs
 *.log
