@@ -99,6 +99,7 @@ pnpm dev
 | `pnpm env:criar` | Cria o .env com os segredos gerados |
 | `pnpm preparar` | Instala, gera o client do Prisma e compila os pacotes |
 | `pnpm dev` | Sobe API (com os workers de envio) e painel |
+| `pnpm encerrar` | Libera as portas 3000 e 3333 apos um Ctrl+C incompleto |
 | `pnpm build` | Compila tudo |
 | `pnpm test` | Roda os testes (num banco separado, ver abaixo) |
 | `pnpm typecheck` | Verifica tipos |
